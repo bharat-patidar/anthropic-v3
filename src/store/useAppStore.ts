@@ -7,6 +7,7 @@ import {
   Transcript,
   AnalysisResult,
   FixSuggestions,
+  ModelType,
 } from '@/types';
 import {
   defaultChecks,
@@ -20,6 +21,7 @@ const initialState = {
   referenceScript: defaultReferenceScript,
   referenceEnabled: true,
   checks: defaultChecks,
+  selectedModel: 'gpt-4o-mini' as ModelType,
   isRunning: false,
   runProgress: 0,
   currentStep: 'input' as const,
@@ -47,6 +49,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ checks });
     }
   },
+
+  setSelectedModel: (model: ModelType) => set({ selectedModel: model }),
 
   toggleCheck: (checkId: CheckType) => {
     const { checks, referenceEnabled } = get();
@@ -98,7 +102,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   clearError: () => set({ error: null }),
 
   runAnalysis: async () => {
-    const { transcripts, checks, referenceEnabled, referenceScript } = get();
+    const { transcripts, checks, referenceEnabled, referenceScript, selectedModel } = get();
 
     set({ isRunning: true, runProgress: 0, currentStep: 'running', error: null });
 
@@ -121,6 +125,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           transcripts,
           enabledChecks,
           referenceScript: referenceEnabled ? referenceScript : undefined,
+          model: selectedModel,
         }),
       });
 
@@ -155,7 +160,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   generateFixes: async () => {
-    const { results, referenceEnabled } = get();
+    const { results, referenceEnabled, selectedModel } = get();
     if (!results) return;
 
     set({ isGeneratingFixes: true, error: null });
@@ -169,6 +174,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         body: JSON.stringify({
           issues: results.issues,
           hasReferenceScript: referenceEnabled,
+          model: selectedModel,
         }),
       });
 

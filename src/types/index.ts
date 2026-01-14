@@ -7,6 +7,15 @@ export type CheckType =
 
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
 
+export type ModelType = 'gpt-4o-mini' | 'gpt-4o' | 'gpt-4-turbo';
+
+export interface ModelOption {
+  id: ModelType;
+  name: string;
+  description: string;
+  costPerMillion: string;
+}
+
 export type IssueType =
   | 'flow_deviation'
   | 'repetition_loop'
@@ -83,6 +92,7 @@ export interface AppState {
   referenceScript: string;
   referenceEnabled: boolean;
   checks: CheckConfig[];
+  selectedModel: ModelType;
 
   // Run state
   isRunning: boolean;
@@ -102,6 +112,7 @@ export interface AppState {
   setTranscripts: (transcripts: Transcript[]) => void;
   setReferenceScript: (script: string) => void;
   setReferenceEnabled: (enabled: boolean) => void;
+  setSelectedModel: (model: ModelType) => void;
   toggleCheck: (checkId: CheckType) => void;
   updateCheckInstructions: (checkId: CheckType, instructions: string) => void;
   resetCheckInstructions: (checkId: CheckType) => void;

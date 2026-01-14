@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOpenAIClient, isOpenAIConfigured } from '@/lib/openai';
 import { SYSTEM_PROMPT, buildFixGenerationPrompt } from '@/lib/prompts';
-import { DetectedIssue, Fix, IssueType } from '@/types';
+import { DetectedIssue, Fix, IssueType, ModelType } from '@/types';
 
 interface GenerateFixesRequest {
   issues: DetectedIssue[];
   hasReferenceScript: boolean;
+  model?: ModelType;
 }
 
 interface OpenAIFix {
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: GenerateFixesRequest = await request.json();
-    const { issues, hasReferenceScript } = body;
+    const { issues, hasReferenceScript, model = 'gpt-4o-mini' } = body;
 
     if (!issues || issues.length === 0) {
       return NextResponse.json({
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
     // Call OpenAI API
     const openai = getOpenAIClient();
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: model,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: prompt },

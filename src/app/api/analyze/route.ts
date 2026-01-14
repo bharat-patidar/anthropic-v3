@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOpenAIClient, isOpenAIConfigured } from '@/lib/openai';
 import { SYSTEM_PROMPT, buildAnalysisPrompt } from '@/lib/prompts';
-import { CheckType, Transcript, DetectedIssue, IssueType, Severity } from '@/types';
+import { CheckType, Transcript, DetectedIssue, IssueType, Severity, ModelType } from '@/types';
 
 interface AnalyzeRequest {
   transcripts: Transcript[];
   enabledChecks: CheckType[];
   referenceScript?: string;
+  model?: ModelType;
 }
 
 interface OpenAIIssue {
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: AnalyzeRequest = await request.json();
-    const { transcripts, enabledChecks, referenceScript } = body;
+    const { transcripts, enabledChecks, referenceScript, model = 'gpt-4o-mini' } = body;
 
     if (!transcripts || transcripts.length === 0) {
       return NextResponse.json(
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
       // Call OpenAI API
       const openai = getOpenAIClient();
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: model,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: prompt },

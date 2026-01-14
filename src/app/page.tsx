@@ -8,6 +8,7 @@ import { Footer } from '@/components/ui/Footer';
 import { TranscriptInput } from '@/components/wizard/TranscriptInput';
 import { ReferenceScript } from '@/components/wizard/ReferenceScript';
 import { ChecksConfig } from '@/components/wizard/ChecksConfig';
+import { ModelSelector } from '@/components/wizard/ModelSelector';
 import { RunButton } from '@/components/wizard/RunButton';
 import { KPICards } from '@/components/results/KPICards';
 import { Charts } from '@/components/results/Charts';
@@ -75,13 +76,14 @@ function RunWizardPage() {
       <TranscriptInput />
       <ReferenceScript />
       <ChecksConfig />
+      <ModelSelector />
       <RunButton />
     </motion.div>
   );
 }
 
 function RunningPage() {
-  const { runProgress, transcripts, checks } = useAppStore();
+  const { runProgress, transcripts, checks, selectedModel } = useAppStore();
   const enabledChecks = checks.filter((c) => c.enabled);
 
   return (
@@ -96,8 +98,8 @@ function RunningPage() {
           <Loader2 className="w-10 h-10 text-white animate-spin" />
         </div>
         <h2 className="text-2xl font-bold text-white mb-2">Analyzing with AI...</h2>
-        <p className="text-[var(--color-slate-400)] mb-6">
-          OpenAI is analyzing {transcripts.length} call{transcripts.length !== 1 ? 's' : ''} with {enabledChecks.length} check{enabledChecks.length !== 1 ? 's' : ''}
+        <p className="text-[var(--color-slate-400)] mb-4">
+          Using <span className="text-amber-400">{selectedModel}</span> to analyze {transcripts.length} call{transcripts.length !== 1 ? 's' : ''} with {enabledChecks.length} check{enabledChecks.length !== 1 ? 's' : ''}
         </p>
         <div className="progress-bar mb-2">
           <motion.div
