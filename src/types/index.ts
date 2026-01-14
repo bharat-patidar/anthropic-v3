@@ -89,6 +89,10 @@ export interface AppState {
   runProgress: number;
   currentStep: 'input' | 'running' | 'results' | 'fixes';
 
+  // Error state
+  error: string | null;
+  isGeneratingFixes: boolean;
+
   // Results state
   results: AnalysisResult | null;
   fixes: FixSuggestions | null;
@@ -103,7 +107,8 @@ export interface AppState {
   resetCheckInstructions: (checkId: CheckType) => void;
   resetAllToDefaults: () => void;
   runAnalysis: () => Promise<void>;
-  generateFixes: () => void;
+  generateFixes: () => Promise<void>;
   setSelectedCallId: (id: string | null) => void;
   goToStep: (step: 'input' | 'running' | 'results' | 'fixes') => void;
+  clearError: () => void;
 }

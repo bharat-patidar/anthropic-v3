@@ -1,36 +1,111 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Agent Control Center
 
-## Getting Started
+A control center to test voice-bot calls using transcripts, detect issues/anomalies, show error analytics, and suggest fixes to prompts/scripts — in one simple flow.
 
-First, run the development server:
+**Built by Convin**
 
+## Features
+
+- **AI-Powered Analysis**: Uses OpenAI GPT-4 to analyze voice bot transcripts for issues
+- **5 Check Types**:
+  - Flow Compliance (Script Adherence)
+  - Repetition / Looping
+  - Language Alignment
+  - Restart / Reset Detection
+  - General Quality (Transcript-only)
+- **Real-time Analytics**: KPI cards, charts, and issue tables
+- **Fix Suggestions**: AI-generated actionable fixes with copy/export functionality
+- **Premium UI**: Glassmorphism design with smooth animations
+
+## Quick Start
+
+### 1. Clone the repository
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd anthropic-v3
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Install dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Set up environment variables
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Edit `.env.local` and add your OpenAI API key:
+```
+OPENAI_API_KEY=sk-your-api-key-here
+```
 
-## Learn More
+### 4. Run the development server
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment on Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Option 1: Deploy via Vercel Dashboard
 
-## Deploy on Vercel
+1. Go to [vercel.com](https://vercel.com) and sign in
+2. Click "Add New..." → "Project"
+3. Import your GitHub repository
+4. Add environment variable:
+   - Key: `OPENAI_API_KEY`
+   - Value: Your OpenAI API key
+5. Click "Deploy"
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Option 2: Deploy via CLI
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm install -g vercel
+vercel
+```
+
+When prompted, add your `OPENAI_API_KEY` environment variable.
+
+## Usage Flow
+
+1. **Input**: Load demo transcripts or paste your own
+2. **Configure**: Enable/disable checks, edit reference script
+3. **Run Analysis**: AI analyzes transcripts for issues
+4. **View Results**: See KPIs, charts, and issue details
+5. **Generate Fixes**: Get AI-suggested improvements
+
+## Demo Data
+
+The app comes with pre-loaded demo transcripts containing:
+- Flow deviation (skipped verification steps)
+- Repetition loops (bot repeating suggestions)
+- Language mismatch (customer switches to Hindi)
+- Mid-call restart (bot greeting again mid-conversation)
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **Animations**: Framer Motion
+- **Charts**: Recharts
+- **State**: Zustand
+- **AI**: OpenAI GPT-4
+
+## API Endpoints
+
+- `POST /api/analyze` - Analyze transcripts for issues
+- `POST /api/generate-fixes` - Generate fix suggestions based on detected issues
+
+## Cost Estimation
+
+Each analysis run costs approximately $0.01-0.10 depending on:
+- Number of transcripts
+- Length of transcripts
+- Number of enabled checks
+
+## License
+
+MIT

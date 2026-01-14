@@ -7,16 +7,11 @@ import {
   Transcript,
   AnalysisResult,
   FixSuggestions,
-  IssueType,
-  Severity,
 } from '@/types';
 import {
   defaultChecks,
   demoTranscript,
   defaultReferenceScript,
-  demoIssues,
-  demoScriptFixes,
-  demoGeneralFixes,
   demoBatchTranscripts,
 } from '@/data/demoData';
 
@@ -28,9 +23,11 @@ const initialState = {
   isRunning: false,
   runProgress: 0,
   currentStep: 'input' as const,
-  results: null,
-  fixes: null,
-  selectedCallId: null,
+  error: null as string | null,
+  isGeneratingFixes: false,
+  results: null as AnalysisResult | null,
+  fixes: null as FixSuggestions | null,
+  selectedCallId: null as string | null,
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -90,132 +87,109 @@ export const useAppStore = create<AppState>((set, get) => ({
   resetAllToDefaults: () => {
     set({
       ...initialState,
+      transcripts: demoBatchTranscripts,
       currentStep: 'input',
       results: null,
       fixes: null,
+      error: null,
     });
   },
+
+  clearError: () => set({ error: null }),
 
   runAnalysis: async () => {
-    set({ isRunning: true, runProgress: 0, currentStep: 'running' });
+    const { transcripts, checks, referenceEnabled, referenceScript } = get();
 
-    const { transcripts, checks, referenceEnabled } = get();
+    set({ isRunning: true, runProgress: 0, currentStep: 'running', error: null });
 
-    // Simulate analysis with progress updates
-    for (let i = 0; i <= 100; i += 5) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      set({ runProgress: i });
+    try {
+      // Get enabled check types
+      const enabledChecks = checks
+        .filter((c) => c.enabled)
+        .map((c) => c.id);
+
+      // Show initial progress
+      set({ runProgress: 10 });
+
+      // Call the analysis API
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transcripts,
+          enabledChecks,
+          referenceScript: referenceEnabled ? referenceScript : undefined,
+        }),
+      });
+
+      set({ runProgress: 70 });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Analysis failed');
+      }
+
+      set({ runProgress: 90 });
+
+      // Small delay for smooth animation
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      set({
+        isRunning: false,
+        runProgress: 100,
+        currentStep: 'results',
+        results: data.results,
+      });
+    } catch (error) {
+      console.error('Analysis error:', error);
+      set({
+        isRunning: false,
+        runProgress: 0,
+        currentStep: 'input',
+        error: error instanceof Error ? error.message : 'Analysis failed. Please try again.',
+      });
     }
-
-    // Filter issues based on enabled checks and reference availability
-    const enabledCheckTypes = checks
-      .filter((c) => c.enabled)
-      .map((c) => c.id);
-
-    const issueTypeMapping: Record<CheckType, IssueType[]> = {
-      flow_compliance: ['flow_deviation'],
-      repetition: ['repetition_loop'],
-      language_alignment: ['language_mismatch'],
-      restart_reset: ['mid_call_restart'],
-      general_quality: ['quality_issue'],
-    };
-
-    const allowedIssueTypes = enabledCheckTypes.flatMap(
-      (ct) => issueTypeMapping[ct] || []
-    );
-
-    // If reference is disabled, remove flow_deviation issues
-    const filteredIssueTypes = referenceEnabled
-      ? allowedIssueTypes
-      : allowedIssueTypes.filter((t) => t !== 'flow_deviation');
-
-    // Filter demo issues based on which checks are enabled
-    const filteredIssues = demoIssues.filter((issue) =>
-      filteredIssueTypes.includes(issue.type)
-    );
-
-    // Calculate analytics
-    const totalCalls = demoBatchTranscripts.length;
-    const callsWithIssues = new Set(filteredIssues.map((i) => i.callId)).size;
-
-    const issuesByType: Record<IssueType, number> = {
-      flow_deviation: 0,
-      repetition_loop: 0,
-      language_mismatch: 0,
-      mid_call_restart: 0,
-      quality_issue: 0,
-    };
-
-    const severityDistribution: Record<Severity, number> = {
-      low: 0,
-      medium: 0,
-      high: 0,
-      critical: 0,
-    };
-
-    filteredIssues.forEach((issue) => {
-      issuesByType[issue.type]++;
-      severityDistribution[issue.severity]++;
-    });
-
-    const languageMismatchRate =
-      totalCalls > 0
-        ? (issuesByType.language_mismatch / totalCalls) * 100
-        : 0;
-
-    const results: AnalysisResult = {
-      totalCalls,
-      callsWithIssues,
-      issues: filteredIssues,
-      issuesByType,
-      severityDistribution,
-      languageMismatchRate,
-    };
-
-    set({
-      isRunning: false,
-      runProgress: 100,
-      currentStep: 'results',
-      results,
-    });
   },
 
-  generateFixes: () => {
-    const { results, referenceEnabled, checks } = get();
+  generateFixes: async () => {
+    const { results, referenceEnabled } = get();
     if (!results) return;
 
-    const flowComplianceEnabled = checks.find(
-      (c) => c.id === 'flow_compliance'
-    )?.enabled;
-    const generalQualityEnabled = checks.find(
-      (c) => c.id === 'general_quality'
-    )?.enabled;
+    set({ isGeneratingFixes: true, error: null });
 
-    // Filter fixes based on what ran
-    const scriptFixes =
-      referenceEnabled && flowComplianceEnabled
-        ? demoScriptFixes.filter((fix) =>
-            results.issues.some((issue) =>
-              fix.relatedIssueIds.includes(issue.id)
-            )
-          )
-        : [];
+    try {
+      const response = await fetch('/api/generate-fixes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          issues: results.issues,
+          hasReferenceScript: referenceEnabled,
+        }),
+      });
 
-    // General fixes for all transcript-only checks
-    const generalFixes = generalQualityEnabled
-      ? demoGeneralFixes.filter((fix) =>
-          results.issues.some((issue) =>
-            fix.relatedIssueIds.includes(issue.id)
-          )
-        )
-      : [];
+      const data = await response.json();
 
-    const fixes: FixSuggestions = {
-      scriptFixes,
-      generalFixes,
-    };
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Fix generation failed');
+      }
 
-    set({ fixes, currentStep: 'fixes' });
+      set({
+        isGeneratingFixes: false,
+        fixes: data.fixes,
+        currentStep: 'fixes',
+      });
+    } catch (error) {
+      console.error('Fix generation error:', error);
+      set({
+        isGeneratingFixes: false,
+        error: error instanceof Error ? error.message : 'Fix generation failed. Please try again.',
+      });
+    }
   },
 
   setSelectedCallId: (id: string | null) => set({ selectedCallId: id }),

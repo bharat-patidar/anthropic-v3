@@ -14,8 +14,39 @@ import { Charts } from '@/components/results/Charts';
 import { IssueTable } from '@/components/results/IssueTable';
 import { CallViewer } from '@/components/results/CallViewer';
 import { FixesPanel } from '@/components/fixes/FixesPanel';
-import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Sparkles, AlertCircle, X, Loader2 } from 'lucide-react';
 import { demoBatchTranscripts } from '@/data/demoData';
+
+function ErrorBanner() {
+  const { error, clearError } = useAppStore();
+
+  if (!error) return null;
+
+  return (
+    <motion.div
+      className="bg-rose-500/20 border border-rose-500/30 rounded-xl p-4 mb-6 flex items-start gap-3"
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <h4 className="text-rose-300 font-medium">Error</h4>
+        <p className="text-rose-200/80 text-sm mt-1">{error}</p>
+        {error.includes('API key') && (
+          <p className="text-rose-200/60 text-xs mt-2">
+            Please set the OPENAI_API_KEY environment variable in your deployment settings.
+          </p>
+        )}
+      </div>
+      <button
+        onClick={clearError}
+        className="p-1 hover:bg-rose-500/20 rounded transition-colors"
+      >
+        <X className="w-4 h-4 text-rose-400" />
+      </button>
+    </motion.div>
+  );
+}
 
 function RunWizardPage() {
   const { setTranscripts } = useAppStore();
@@ -39,6 +70,8 @@ function RunWizardPage() {
         </p>
       </div>
 
+      <ErrorBanner />
+
       <TranscriptInput />
       <ReferenceScript />
       <ChecksConfig />
@@ -48,7 +81,8 @@ function RunWizardPage() {
 }
 
 function RunningPage() {
-  const { runProgress } = useAppStore();
+  const { runProgress, transcripts, checks } = useAppStore();
+  const enabledChecks = checks.filter((c) => c.enabled);
 
   return (
     <motion.div
@@ -58,12 +92,12 @@ function RunningPage() {
       exit={{ opacity: 0 }}
     >
       <div className="glass-card p-12 text-center max-w-md">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-6 animate-pulse">
-          <Sparkles className="w-10 h-10 text-white" />
+        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
+          <Loader2 className="w-10 h-10 text-white animate-spin" />
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2">Analyzing Calls...</h2>
+        <h2 className="text-2xl font-bold text-white mb-2">Analyzing with AI...</h2>
         <p className="text-[var(--color-slate-400)] mb-6">
-          Running all enabled checks on your transcripts
+          OpenAI is analyzing {transcripts.length} call{transcripts.length !== 1 ? 's' : ''} with {enabledChecks.length} check{enabledChecks.length !== 1 ? 's' : ''}
         </p>
         <div className="progress-bar mb-2">
           <motion.div
@@ -72,14 +106,16 @@ function RunningPage() {
             animate={{ width: `${runProgress}%` }}
           />
         </div>
-        <span className="text-sm text-[var(--color-slate-400)]">{runProgress}%</span>
+        <span className="text-sm text-[var(--color-slate-400)]">
+          {runProgress < 70 ? 'Sending to OpenAI...' : runProgress < 90 ? 'Processing results...' : 'Almost done...'}
+        </span>
       </div>
     </motion.div>
   );
 }
 
 function ResultsPage() {
-  const { goToStep, generateFixes } = useAppStore();
+  const { goToStep, generateFixes, isGeneratingFixes, results } = useAppStore();
 
   const handleGenerateFixes = () => {
     generateFixes();
@@ -96,7 +132,7 @@ function ResultsPage() {
         <div>
           <h2 className="text-2xl font-bold text-white mb-2">Analysis Results</h2>
           <p className="text-[var(--color-slate-400)]">
-            Review detected issues and analytics from your voice bot calls.
+            AI-powered analysis found {results?.issues.length || 0} issue{results?.issues.length !== 1 ? 's' : ''} in your voice bot calls.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -110,12 +146,24 @@ function ResultsPage() {
           <button
             className="btn-primary flex items-center gap-2"
             onClick={handleGenerateFixes}
+            disabled={isGeneratingFixes}
           >
-            Next: Generate Fixes
-            <ArrowRight className="w-4 h-4" />
+            {isGeneratingFixes ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating Fixes...
+              </>
+            ) : (
+              <>
+                Next: Generate Fixes
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </button>
         </div>
       </div>
+
+      <ErrorBanner />
 
       <KPICards />
       <Charts />
@@ -137,9 +185,9 @@ function FixesPage() {
     >
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white mb-2">Fix Suggestions</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">AI-Generated Fix Suggestions</h2>
           <p className="text-[var(--color-slate-400)]">
-            Actionable fixes based on the detected issues in your calls.
+            Actionable fixes generated by AI based on the detected issues.
           </p>
         </div>
         <div className="flex items-center gap-3">
