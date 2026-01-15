@@ -5,6 +5,7 @@ export interface Template {
   name: string;
   content: string;
   createdAt: string;
+  isDefault?: boolean;
 }
 
 export function useSaveLoadTemplates(storageKey: string) {
@@ -128,11 +129,54 @@ export function useSaveLoadTemplates(storageKey: string) {
     return template ? template.content : null;
   };
 
+  const setDefaultTemplate = async (id: string) => {
+    if (useDatabase) {
+      try {
+        const response = await fetch('/api/templates/set-default', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, storageKey }),
+        });
+
+        if (response.ok) {
+          console.log(`Set template ${id} as default`);
+          // Update local state: unset all defaults, then set this one
+          setTemplates((prev) =>
+            prev.map((t) => ({
+              ...t,
+              isDefault: t.id === id,
+            }))
+          );
+          return;
+        } else {
+          throw new Error('Failed to set default template in database');
+        }
+      } catch (error) {
+        console.error('Error setting default template:', error);
+        setUseDatabase(false);
+      }
+    }
+
+    // Fallback to localStorage
+    setTemplates((prev) =>
+      prev.map((t) => ({
+        ...t,
+        isDefault: t.id === id,
+      }))
+    );
+  };
+
+  const getDefaultTemplate = (): Template | null => {
+    return templates.find((t) => t.isDefault) || null;
+  };
+
   return {
     templates,
     saveTemplate,
     deleteTemplate,
     loadTemplate,
+    setDefaultTemplate,
+    getDefaultTemplate,
     isUsingDatabase: useDatabase,
     isLoading,
   };

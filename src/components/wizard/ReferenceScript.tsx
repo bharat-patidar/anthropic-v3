@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, RotateCcw, ChevronDown, ChevronUp, SkipForward, Save, Upload } from 'lucide-react';
+import { BookOpen, RotateCcw, ChevronDown, ChevronUp, SkipForward, Save, Upload, Star } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { defaultReferenceScript } from '@/data/demoData';
 import { useSaveLoadTemplates } from '@/hooks/useSaveLoadTemplates';
@@ -17,8 +17,32 @@ export function ReferenceScript() {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [templateName, setTemplateName] = useState('');
+  const [showTemplateMenu, setShowTemplateMenu] = useState(false);
 
-  const { templates, saveTemplate, loadTemplate, isUsingDatabase, isLoading } = useSaveLoadTemplates('templates_reference_script');
+  const { templates, saveTemplate, loadTemplate, setDefaultTemplate, getDefaultTemplate, isUsingDatabase, isLoading } = useSaveLoadTemplates('templates_reference_script');
+
+  // Auto-load default template on mount
+  useEffect(() => {
+    if (!isLoading && templates.length > 0) {
+      const defaultTemplate = getDefaultTemplate();
+      if (defaultTemplate && !referenceScript) {
+        setReferenceScript(defaultTemplate.content);
+      }
+    }
+  }, [isLoading, templates]);
+
+  // Close template menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showTemplateMenu && !target.closest('.template-menu-container')) {
+        setShowTemplateMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showTemplateMenu]);
 
   const resetToDefault = () => {
     setReferenceScript(defaultReferenceScript);
@@ -44,6 +68,15 @@ export function ReferenceScript() {
     const content = loadTemplate(templateId);
     if (content) {
       setReferenceScript(content);
+    }
+  };
+
+  const handleSetDefault = async (templateId: string) => {
+    try {
+      await setDefaultTemplate(templateId);
+    } catch (error) {
+      console.error('Error setting default template:', error);
+      alert('Failed to set default template. Please try again.');
     }
   };
 
@@ -131,19 +164,52 @@ export function ReferenceScript() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   {/* Load Template Dropdown */}
-                  <div className="flex-1">
-                    <select
-                      className="w-full px-3 py-2 bg-[var(--color-navy-800)] border border-[var(--color-navy-700)] rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      onChange={(e) => handleLoad(e.target.value)}
-                      value=""
+                  <div className="flex-1 relative template-menu-container">
+                    <button
+                      onClick={() => setShowTemplateMenu(!showTemplateMenu)}
+                      className="w-full px-3 py-2 bg-[var(--color-navy-800)] border border-[var(--color-navy-700)] rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-left flex items-center justify-between"
                     >
-                      <option value="">Load saved template...</option>
-                      {templates.map((template) => (
-                        <option key={template.id} value={template.id}>
-                          {template.name}
-                        </option>
-                      ))}
-                    </select>
+                      <span>Load saved template...</span>
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+
+                    {/* Custom Template Menu */}
+                    {showTemplateMenu && templates.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--color-navy-800)] border border-[var(--color-navy-700)] rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+                        {templates.map((template) => (
+                          <div
+                            key={template.id}
+                            className="flex items-center justify-between px-3 py-2 hover:bg-[var(--color-navy-700)] cursor-pointer group"
+                          >
+                            <span
+                              className="flex-1 text-sm text-white"
+                              onClick={() => {
+                                handleLoad(template.id);
+                                setShowTemplateMenu(false);
+                              }}
+                            >
+                              {template.name}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSetDefault(template.id);
+                              }}
+                              className="ml-2 p-1 hover:bg-[var(--color-navy-600)] rounded"
+                              title={template.isDefault ? "Default template" : "Set as default"}
+                            >
+                              <Star
+                                className={`w-4 h-4 ${
+                                  template.isDefault
+                                    ? 'fill-yellow-400 text-yellow-400'
+                                    : 'text-gray-400 group-hover:text-yellow-400'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Save Button */}

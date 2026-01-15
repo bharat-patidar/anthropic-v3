@@ -25,7 +25,8 @@ async function initDatabase() {
         storage_key VARCHAR(255) NOT NULL,
         name VARCHAR(255) NOT NULL,
         content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_default BOOLEAN DEFAULT FALSE
       )
     `;
 
@@ -33,6 +34,16 @@ async function initDatabase() {
     await sql`
       CREATE INDEX IF NOT EXISTS idx_storage_key ON templates(storage_key)
     `;
+
+    // Add is_default column if it doesn't exist (for existing tables)
+    try {
+      await sql`
+        ALTER TABLE templates
+        ADD COLUMN IF NOT EXISTS is_default BOOLEAN DEFAULT FALSE
+      `;
+    } catch (alterError) {
+      // Column might already exist, ignore error
+    }
   } catch (error) {
     console.error('Error initializing database:', error);
     throw error;
@@ -56,10 +67,10 @@ export async function GET(request: NextRequest) {
     await initDatabase();
 
     const rows = await sql`
-      SELECT id, name, content, created_at as "createdAt"
+      SELECT id, name, content, created_at as "createdAt", is_default as "isDefault"
       FROM templates
       WHERE storage_key = ${storageKey}
-      ORDER BY created_at DESC
+      ORDER BY is_default DESC, created_at DESC
     `;
 
     return NextResponse.json(rows);
