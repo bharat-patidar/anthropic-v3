@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertTriangle, Lightbulb, MessageSquare } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
@@ -23,49 +22,12 @@ const severityClasses: Record<Severity, string> = {
 
 export function CallViewer() {
   const { selectedCallId, setSelectedCallId, results, transcripts } = useAppStore();
-  const [hoveredIssueId, setHoveredIssueId] = useState<string | null>(null);
-  const lineRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Early returns AFTER all hooks have been called
   const isVisible = selectedCallId && results;
   const transcript = isVisible ? transcripts.find((t) => t.id === selectedCallId) : null;
   const callIssues = isVisible && results ? results.issues.filter((i) => i.callId === selectedCallId) : [];
   const hasValidTranscript = transcript && transcript.lines && Array.isArray(transcript.lines);
-
-  // Get line numbers for the currently hovered issue
-  const hoveredIssue = hoveredIssueId && callIssues.length > 0
-    ? callIssues.find((i) => i.id === hoveredIssueId)
-    : null;
-  const hoveredLines = hoveredIssue && hoveredIssue.lineNumbers && Array.isArray(hoveredIssue.lineNumbers)
-    ? new Set(hoveredIssue.lineNumbers)
-    : null;
-
-  // Auto-scroll to relevant line when hovering over an issue
-  useEffect(() => {
-    if (!hoveredIssueId || !results || !selectedCallId) return;
-
-    // Find the hovered issue from results
-    const issue = results.issues.find((i) => i.id === hoveredIssueId && i.callId === selectedCallId);
-    if (!issue || !issue.lineNumbers || !Array.isArray(issue.lineNumbers) || issue.lineNumbers.length === 0) {
-      return;
-    }
-
-    // Get the first line number
-    const firstLineNumber = Math.min(...issue.lineNumbers);
-    if (!Number.isFinite(firstLineNumber)) return;
-
-    const lineElement = lineRefs.current.get(firstLineNumber);
-    if (lineElement) {
-      try {
-        lineElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
-      } catch (error) {
-        console.error('Error scrolling to line:', error);
-      }
-    }
-  }, [hoveredIssueId, results, selectedCallId]);
 
   // Return null AFTER all hooks
   if (!isVisible || !hasValidTranscript) return null;
@@ -117,49 +79,28 @@ export function CallViewer() {
                   Transcript
                 </h4>
                 <div className="space-y-1">
-                  {transcript.lines.map((line, index) => {
-                    // Determine highlighting state based on hover
-                    const lineNumber = index + 1;
-                    const isRelevant = hoveredLines ? hoveredLines.has(lineNumber) : true;
-                    const isDimmed = hoveredLines && !hoveredLines.has(lineNumber);
-
-                    return (
-                      <div
-                        key={index}
-                        ref={(el) => {
-                          if (el) {
-                            lineRefs.current.set(lineNumber, el);
-                          } else {
-                            lineRefs.current.delete(lineNumber);
-                          }
-                        }}
-                        className={`transcript-line ${isRelevant ? 'highlighted' : ''}`}
-                        style={{
-                          opacity: isDimmed ? 0.3 : 1,
-                          transition: 'opacity 0.2s ease-in-out',
-                        }}
+                  {transcript.lines.map((line, index) => (
+                    <div key={index} className="transcript-line">
+                      <span className="text-xs text-[var(--color-slate-500)] w-8 shrink-0">
+                        {line.timestamp || `${index + 1}`}
+                      </span>
+                      <span
+                        className={`speaker-badge ${
+                          line.speaker === 'bot' ? 'speaker-bot' : 'speaker-customer'
+                        }`}
                       >
-                        <span className="text-xs text-[var(--color-slate-500)] w-8 shrink-0">
-                          {line.timestamp || `${index + 1}`}
+                        {line.speaker}
+                      </span>
+                      <span className="text-sm text-[var(--color-slate-200)] flex-1">
+                        {line.text}
+                      </span>
+                      {line.language && line.language !== 'en' && (
+                        <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded">
+                          {line.language.toUpperCase()}
                         </span>
-                        <span
-                          className={`speaker-badge ${
-                            line.speaker === 'bot' ? 'speaker-bot' : 'speaker-customer'
-                          }`}
-                        >
-                          {line.speaker}
-                        </span>
-                        <span className="text-sm text-[var(--color-slate-200)] flex-1">
-                          {line.text}
-                        </span>
-                        {line.language && line.language !== 'en' && (
-                          <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded">
-                            {line.language.toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -168,38 +109,55 @@ export function CallViewer() {
                 <h4 className="text-sm font-medium text-[var(--color-slate-300)]">
                   Issues in this call
                 </h4>
-                {callIssues.map((issue, index) => (
-                  <motion.div
-                    key={issue.id}
-                    className="glass-card-subtle p-4 space-y-3 cursor-pointer hover:bg-[var(--color-navy-700)] transition-colors"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    onMouseEnter={() => setHoveredIssueId(issue.id)}
-                    onMouseLeave={() => setHoveredIssueId(null)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-amber-400" />
-                        <span className="text-sm font-medium text-white">
-                          {issueTypeLabels[issue.type] || issue.type}
+                {callIssues.map((issue, index) => {
+                  // Get timestamps for the issue based on line numbers
+                  const issueTimestamps = issue.lineNumbers && Array.isArray(issue.lineNumbers)
+                    ? issue.lineNumbers
+                        .map((lineNum) => {
+                          const line = transcript.lines[lineNum - 1];
+                          return line?.timestamp;
+                        })
+                        .filter(Boolean)
+                        .join(', ')
+                    : null;
+
+                  return (
+                    <motion.div
+                      key={issue.id}
+                      className="glass-card-subtle p-4 space-y-3"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-400" />
+                          <span className="text-sm font-medium text-white">
+                            {issueTypeLabels[issue.type] || issue.type}
+                          </span>
+                        </div>
+                        <span className={`badge ${severityClasses[issue.severity] || 'badge-medium'}`}>
+                          {issue.severity}
                         </span>
                       </div>
-                      <span className={`badge ${severityClasses[issue.severity] || 'badge-medium'}`}>
-                        {issue.severity}
-                      </span>
-                    </div>
-                    <p className="text-xs text-[var(--color-slate-400)]">
-                      {issue.explanation}
-                    </p>
-                    {issue.suggestedFix && (
-                      <div className="flex items-start gap-2 p-2 bg-green-500/10 rounded-lg">
-                        <Lightbulb className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
-                        <p className="text-xs text-green-300">{issue.suggestedFix}</p>
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
+                      {issueTimestamps && (
+                        <div className="text-xs text-[var(--color-slate-500)]">
+                          <span className="font-medium">Timestamp: </span>
+                          {issueTimestamps}
+                        </div>
+                      )}
+                      <p className="text-xs text-[var(--color-slate-400)]">
+                        {issue.explanation}
+                      </p>
+                      {issue.suggestedFix && (
+                        <div className="flex items-start gap-2 p-2 bg-green-500/10 rounded-lg">
+                          <Lightbulb className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
+                          <p className="text-xs text-green-300">{issue.suggestedFix}</p>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
 
                 {callIssues.length === 0 && (
                   <div className="p-4 text-center text-[var(--color-slate-400)] text-sm">
