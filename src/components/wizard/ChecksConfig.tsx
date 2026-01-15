@@ -9,9 +9,11 @@ import {
   RotateCcw,
   AlertCircle,
   Lock,
+  Save,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { CheckType } from '@/types';
+import { useSaveLoadTemplates } from '@/hooks/useSaveLoadTemplates';
 
 const checkIcons: Record<CheckType, string> = {
   flow_compliance: '📋',
@@ -20,6 +22,104 @@ const checkIcons: Record<CheckType, string> = {
   restart_reset: '🔃',
   general_quality: '✨',
 };
+
+// Helper component for individual check save/load
+function CheckInstructionsSaveLoad({
+  checkId,
+  instructions,
+  onLoad,
+}: {
+  checkId: CheckType;
+  instructions: string;
+  onLoad: (content: string) => void;
+}) {
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const { templates, saveTemplate, loadTemplate } = useSaveLoadTemplates(
+    `templates_check_${checkId}`
+  );
+
+  const handleSave = () => {
+    if (!templateName.trim()) {
+      alert('Please enter a template name');
+      return;
+    }
+    saveTemplate(templateName.trim(), instructions);
+    setTemplateName('');
+    setShowSaveDialog(false);
+  };
+
+  const handleLoad = (templateId: string) => {
+    if (!templateId) return;
+    const content = loadTemplate(templateId);
+    if (content) {
+      onLoad(content);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Save/Load Controls */}
+      <div className="flex items-center gap-2">
+        {/* Load Template Dropdown */}
+        <div className="flex-1">
+          <select
+            className="w-full px-2 py-1.5 bg-[var(--color-navy-800)] border border-[var(--color-navy-700)] rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            onChange={(e) => handleLoad(e.target.value)}
+            value=""
+          >
+            <option value="">Load saved template...</option>
+            {templates.map((template) => (
+              <option key={template.id} value={template.id}>
+                {template.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Save Button */}
+        <button
+          onClick={() => setShowSaveDialog(!showSaveDialog)}
+          className="btn-primary flex items-center gap-1 text-xs py-1.5 px-3 whitespace-nowrap"
+        >
+          <Save className="w-3 h-3" />
+          Save
+        </button>
+      </div>
+
+      {/* Save Dialog */}
+      {showSaveDialog && (
+        <div className="glass-card-subtle p-2 space-y-2">
+          <label className="text-xs text-[var(--color-slate-300)]">
+            Template Name
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="flex-1 px-2 py-1.5 bg-[var(--color-navy-800)] border border-[var(--color-navy-700)] rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="e.g., Strict Flow Check"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+            />
+            <button onClick={handleSave} className="btn-primary text-xs py-1.5 px-3">
+              Save
+            </button>
+            <button
+              onClick={() => {
+                setShowSaveDialog(false);
+                setTemplateName('');
+              }}
+              className="btn-secondary text-xs py-1.5 px-3"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ChecksConfig() {
   const {
@@ -151,9 +251,19 @@ export function ChecksConfig() {
                           className="flex items-center gap-1 text-xs text-[var(--color-slate-400)] hover:text-white transition-colors"
                         >
                           <RotateCcw className="w-3 h-3" />
-                          Reset
+                          Reset to Default
                         </button>
                       </div>
+
+                      {/* Save/Load Controls */}
+                      <CheckInstructionsSaveLoad
+                        checkId={check.id}
+                        instructions={check.instructions}
+                        onLoad={(content) =>
+                          updateCheckInstructions(check.id, content)
+                        }
+                      />
+
                       <textarea
                         className="textarea-field text-sm"
                         value={check.instructions}
