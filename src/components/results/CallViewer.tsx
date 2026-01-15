@@ -43,7 +43,7 @@ export function CallViewer() {
 
   // Auto-scroll to relevant line when hovering over an issue
   useEffect(() => {
-    if (hoveredLines && hoveredLines.size > 0) {
+    if (hoveredIssueId && hoveredLines && hoveredLines.size > 0) {
       // Get the first line number from the hovered issue
       const firstLineNumber = Math.min(...Array.from(hoveredLines));
       const lineElement = lineRefs.current.get(firstLineNumber);
@@ -55,7 +55,8 @@ export function CallViewer() {
         });
       }
     }
-  }, [hoveredLines]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hoveredIssueId]); // hoveredLines is derived from hoveredIssueId, no need to include it
 
   return (
     <AnimatePresence>
