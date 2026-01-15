@@ -89,28 +89,36 @@ export function TranscriptInput() {
           const trimmedLine = line.trim();
           if (!trimmedLine) continue;
 
+          let parsed = false;
+
           // Check if line starts with "setup user" (bot)
           if (trimmedLine.toLowerCase().startsWith('setup user')) {
             // Extract timestamp and text: "setup user 00:00:00 Text here"
-            const match = trimmedLine.match(/setup\s+user\s+(\d{2}:\d{2}:\d{2})?\s*(.+)/i);
-            if (match) {
+            const match = trimmedLine.match(/setup\s+user\s+(\d{2}:\d{2}:\d{2})?\s*(.*)/i);
+            if (match && match[2]) {
               parsedLines.push({
                 speaker: 'bot' as const,
-                text: match[2] || trimmedLine,
+                text: match[2].trim(),
                 timestamp: match[1] || undefined,
               });
+              parsed = true;
+            } else {
+              console.warn('Setup user line found but failed to parse:', trimmedLine);
             }
           }
           // Check if line starts with phone number (customer)
           else if (/^\d{10,}/.test(trimmedLine)) {
             // Extract: "919820203664 00:00:01 Text here"
-            const match = trimmedLine.match(/^(\d+)\s+(\d{2}:\d{2}:\d{2})?\s*(.+)/);
-            if (match) {
+            const match = trimmedLine.match(/^(\d+)\s+(\d{2}:\d{2}:\d{2})?\s*(.*)/);
+            if (match && match[3]) {
               parsedLines.push({
                 speaker: 'customer' as const,
-                text: match[3] || trimmedLine,
+                text: match[3].trim(),
                 timestamp: match[2] || undefined,
               });
+              parsed = true;
+            } else {
+              console.warn('Phone number line found but failed to parse:', trimmedLine);
             }
           }
           // Fallback: try old [BOT]/[CUSTOMER] format
@@ -121,8 +129,17 @@ export function TranscriptInput() {
                 speaker: m[1].toLowerCase() as 'bot' | 'customer',
                 text: m[2].trim(),
               });
+              parsed = true;
             }
           }
+
+          if (!parsed && trimmedLine) {
+            console.warn('Line did not match any pattern and was skipped:', trimmedLine);
+          }
+        }
+
+        if (parsedLines.length === 0) {
+          console.warn('No lines were parsed from transcript. First 200 chars:', transcriptText.substring(0, 200));
         }
 
         return {

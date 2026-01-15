@@ -43,6 +43,13 @@ export async function analyzeTranscript(
   const enabledChecks = checks.filter((c) => c.enabled);
 
   if (enabledChecks.length === 0) {
+    console.log('No enabled checks, skipping analysis');
+    return [];
+  }
+
+  // Validate transcript has lines
+  if (!transcript.lines || transcript.lines.length === 0) {
+    console.warn('Transcript has no lines:', transcript.id);
     return [];
   }
 
@@ -50,6 +57,8 @@ export async function analyzeTranscript(
   const transcriptText = transcript.lines
     .map((line, idx) => `[${idx + 1}] ${line.speaker.toUpperCase()}: ${line.text}`)
     .join('\n');
+
+  console.log(`Analyzing transcript ${transcript.id} with ${transcript.lines.length} lines`);
 
   // Build checks description
   const checksDescription = enabledChecks
@@ -125,6 +134,8 @@ Return ONLY a JSON array of issues. If no issues are found, return an empty arra
       console.error('Parsed result is not an array:', issues);
       return [];
     }
+
+    console.log(`Found ${issues.length} issues in transcript ${transcript.id}`);
 
     // Convert to DetectedIssue format with IDs
     return issues.map((issue: {

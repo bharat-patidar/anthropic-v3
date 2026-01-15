@@ -133,6 +133,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({ runProgress: progress });
 
         try {
+          console.log(`Starting analysis of transcript ${transcript.id} (${i + 1}/${totalTranscripts})`);
           const issues = await analyzeTranscript(
             apiKey,
             openaiConfig.model,
@@ -141,14 +142,22 @@ export const useAppStore = create<AppState>((set, get) => ({
             referenceEnabled ? referenceScript : null,
             knowledgeBaseEnabled ? knowledgeBase : null
           );
+          console.log(`Completed analysis of transcript ${transcript.id}, found ${issues.length} issues`);
           allIssues.push(...issues);
         } catch (error) {
           console.error(`Error analyzing transcript ${transcript.id}:`, error);
+          alert(`Error analyzing transcript ${transcript.id}: ${error instanceof Error ? error.message : String(error)}`);
           // Continue with other transcripts
         }
       }
 
       set({ runProgress: 95 });
+
+      console.log(`Analysis complete. Total issues found: ${allIssues.length}`);
+      console.log('Issues by call:', allIssues.reduce((acc, issue) => {
+        acc[issue.callId] = (acc[issue.callId] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>));
 
       // Calculate analytics
       const totalCalls = transcripts.length;
