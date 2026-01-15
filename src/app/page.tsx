@@ -8,6 +8,7 @@ import { Footer } from '@/components/ui/Footer';
 import { TranscriptInput } from '@/components/wizard/TranscriptInput';
 import { ReferenceScript } from '@/components/wizard/ReferenceScript';
 import { ChecksConfig } from '@/components/wizard/ChecksConfig';
+import { OpenAIConfig } from '@/components/wizard/OpenAIConfig';
 import { RunButton } from '@/components/wizard/RunButton';
 import { KPICards } from '@/components/results/KPICards';
 import { Charts } from '@/components/results/Charts';
@@ -39,6 +40,7 @@ function RunWizardPage() {
         </p>
       </div>
 
+      <OpenAIConfig />
       <TranscriptInput />
       <ReferenceScript />
       <ChecksConfig />
