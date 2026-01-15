@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+import postgres from 'postgres';
+
+// Initialize database connection
+// Supports both Neon (DATABASE_URL) and Vercel Postgres (POSTGRES_URL)
+const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+
+if (!databaseUrl) {
+  console.error('No database URL found. Please set DATABASE_URL or POSTGRES_URL environment variable.');
+}
+
+const sql = databaseUrl ? postgres(databaseUrl, {
+  ssl: 'require',
+  max: 1, // Serverless function - use single connection
+}) : null;
 
 // Initialize database table if it doesn't exist
 async function initDatabase() {
+  if (!sql) return;
+
   try {
     await sql`
       CREATE TABLE IF NOT EXISTS templates (
@@ -10,18 +25,27 @@ async function initDatabase() {
         storage_key VARCHAR(255) NOT NULL,
         name VARCHAR(255) NOT NULL,
         content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_storage_key (storage_key)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `;
+
+    // Create index separately (CREATE TABLE IF NOT EXISTS doesn't support inline INDEX)
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_storage_key ON templates(storage_key)
     `;
   } catch (error) {
     console.error('Error initializing database:', error);
+    throw error;
   }
 }
 
 // GET all templates for a storage key
 export async function GET(request: NextRequest) {
   try {
+    if (!sql) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const storageKey = searchParams.get('storageKey');
 
@@ -31,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     await initDatabase();
 
-    const { rows } = await sql`
+    const rows = await sql`
       SELECT id, name, content, created_at as "createdAt"
       FROM templates
       WHERE storage_key = ${storageKey}
@@ -41,14 +65,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(rows);
   } catch (error) {
     console.error('Error fetching templates:', error);
-    // Fallback to empty array if database not available
-    return NextResponse.json([]);
+    return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
 }
 
 // POST create new template
 export async function POST(request: NextRequest) {
   try {
+    if (!sql) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+    }
+
     const body = await request.json();
     const { id, storageKey, name, content } = body;
 
@@ -86,6 +113,10 @@ export async function POST(request: NextRequest) {
 // DELETE template
 export async function DELETE(request: NextRequest) {
   try {
+    if (!sql) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const id = searchParams.get('id');
 

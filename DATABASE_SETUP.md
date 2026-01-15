@@ -1,31 +1,34 @@
 # Database Setup for Template Persistence
 
-This application uses Vercel Postgres to store saved templates permanently across deployments.
+This application supports **both Neon and Vercel Postgres** to store saved templates permanently across deployments.
 
 ## Setup Instructions
 
-### 1. Create Vercel Postgres Database (Free Tier)
+### Option 1: Neon (Recommended - Already Connected! ✅)
+
+If you see "neon-lime-school" in your Vercel Storage tab, you're already set up! Just redeploy.
+
+### Option 2: Vercel Postgres
 
 1. Go to your Vercel project dashboard
 2. Navigate to the **Storage** tab
 3. Click **Create Database**
-4. Select **Postgres**
+4. Select **Postgres** (Vercel's managed Postgres)
 5. Choose a name (e.g., `anthropic-v3-db`)
 6. Select a region close to your deployment
 7. Click **Create**
 
-### 2. Environment Variables (Automatic)
+## Environment Variables (Automatic)
 
-Vercel automatically adds the following environment variables to your project:
-- `POSTGRES_URL`
-- `POSTGRES_PRISMA_URL`
-- `POSTGRES_URL_NON_POOLING`
-- `POSTGRES_USER`
-- `POSTGRES_HOST`
-- `POSTGRES_PASSWORD`
-- `POSTGRES_DATABASE`
+The app checks for these environment variables automatically:
 
-**No manual configuration needed!** These are automatically available to your app.
+**Neon** (your current setup):
+- `DATABASE_URL` - Main connection string
+
+**Vercel Postgres**:
+- `POSTGRES_URL` - Main connection string
+
+**No manual configuration needed!** These are automatically available to your app once you connect the database.
 
 ### 3. Database Table (Auto-Created)
 
