@@ -10,6 +10,7 @@ export interface Template {
 export function useSaveLoadTemplates(storageKey: string) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [useDatabase, setUseDatabase] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load templates from database or localStorage on mount
   useEffect(() => {
@@ -21,14 +22,16 @@ export function useSaveLoadTemplates(storageKey: string) {
           const data = await response.json();
           if (Array.isArray(data)) {
             setTemplates(data);
-            console.log(`Loaded ${data.length} templates from database for ${storageKey}`);
+            console.log(`✅ Loaded ${data.length} templates from DATABASE for ${storageKey}`);
+            setIsLoading(false);
             return;
           }
         }
         // If database fails, fall back to localStorage
         throw new Error('Database not available');
       } catch (error) {
-        console.warn('Database unavailable, using localStorage fallback:', error);
+        console.warn('⚠️  Database unavailable, using localStorage fallback. Templates will not persist across deployments.');
+        console.warn('To enable permanent storage, set up Vercel Postgres: https://vercel.com/docs/storage/vercel-postgres');
         setUseDatabase(false);
 
         // Fall back to localStorage
@@ -37,12 +40,13 @@ export function useSaveLoadTemplates(storageKey: string) {
           try {
             const parsed = JSON.parse(stored);
             setTemplates(parsed);
-            console.log(`Loaded ${parsed.length} templates from localStorage for ${storageKey}`);
+            console.log(`📦 Loaded ${parsed.length} templates from localStorage for ${storageKey}`);
           } catch (parseError) {
             console.error('Failed to load templates from localStorage:', parseError);
             setTemplates([]);
           }
         }
+        setIsLoading(false);
       }
     }
 
@@ -129,5 +133,7 @@ export function useSaveLoadTemplates(storageKey: string) {
     saveTemplate,
     deleteTemplate,
     loadTemplate,
+    isUsingDatabase: useDatabase,
+    isLoading,
   };
 }

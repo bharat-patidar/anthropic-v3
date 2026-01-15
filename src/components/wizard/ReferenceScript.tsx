@@ -18,7 +18,7 @@ export function ReferenceScript() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [templateName, setTemplateName] = useState('');
 
-  const { templates, saveTemplate, loadTemplate } = useSaveLoadTemplates('templates_reference_script');
+  const { templates, saveTemplate, loadTemplate, isUsingDatabase, isLoading } = useSaveLoadTemplates('templates_reference_script');
 
   const resetToDefault = () => {
     setReferenceScript(defaultReferenceScript);
@@ -128,31 +128,56 @@ export function ReferenceScript() {
               </div>
 
               {/* Save/Load Controls */}
-              <div className="flex items-center gap-2">
-                {/* Load Template Dropdown */}
-                <div className="flex-1">
-                  <select
-                    className="w-full px-3 py-2 bg-[var(--color-navy-800)] border border-[var(--color-navy-700)] rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    onChange={(e) => handleLoad(e.target.value)}
-                    value=""
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  {/* Load Template Dropdown */}
+                  <div className="flex-1">
+                    <select
+                      className="w-full px-3 py-2 bg-[var(--color-navy-800)] border border-[var(--color-navy-700)] rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onChange={(e) => handleLoad(e.target.value)}
+                      value=""
+                    >
+                      <option value="">Load saved template...</option>
+                      {templates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Save Button */}
+                  <button
+                    onClick={() => setShowSaveDialog(!showSaveDialog)}
+                    className="btn-primary flex items-center gap-2 text-sm py-2 whitespace-nowrap"
                   >
-                    <option value="">Load saved template...</option>
-                    {templates.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name}
-                      </option>
-                    ))}
-                  </select>
+                    <Save className="w-4 h-4" />
+                    Save
+                  </button>
                 </div>
 
-                {/* Save Button */}
-                <button
-                  onClick={() => setShowSaveDialog(!showSaveDialog)}
-                  className="btn-primary flex items-center gap-2 text-sm py-2 whitespace-nowrap"
-                >
-                  <Save className="w-4 h-4" />
-                  Save
-                </button>
+                {/* Storage Status Indicator */}
+                {!isLoading && (
+                  <div className="flex items-center justify-end">
+                    {isUsingDatabase ? (
+                      <span className="text-xs text-green-400 flex items-center gap-1">
+                        ✅ Database connected - Templates persist permanently
+                      </span>
+                    ) : (
+                      <span className="text-xs text-amber-400 flex items-center gap-1">
+                        ⚠️  Using local storage - Templates will be lost on redeploy.{' '}
+                        <a
+                          href="https://vercel.com/docs/storage/vercel-postgres/quickstart"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-amber-300"
+                        >
+                          Set up database
+                        </a>
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Save Dialog */}
