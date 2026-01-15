@@ -12,6 +12,7 @@ import {
   Pie,
   Cell,
   Legend,
+  LabelList,
 } from 'recharts';
 import { useAppStore } from '@/store/useAppStore';
 import { IssueType, Severity } from '@/types';
@@ -44,6 +45,42 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<
     );
   }
   return null;
+};
+
+// Custom Label component for pie charts to show percentages
+const renderPieLabel = ({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  percent,
+}: {
+  cx: number;
+  cy: number;
+  midAngle: number;
+  innerRadius: number;
+  outerRadius: number;
+  percent: number;
+}) => {
+  const RADIAN = Math.PI / 180;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="white"
+      textAnchor={x > cx ? 'start' : 'end'}
+      dominantBaseline="central"
+      fontSize={14}
+      fontWeight={700}
+    >
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
 };
 
 export function Charts() {
@@ -108,6 +145,13 @@ export function Charts() {
               {issuesByTypeData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.fill} />
               ))}
+              <LabelList
+                dataKey="value"
+                position="right"
+                fill="#ffffff"
+                fontSize={12}
+                fontWeight={600}
+              />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -131,6 +175,8 @@ export function Charts() {
               outerRadius={90}
               paddingAngle={2}
               dataKey="value"
+              label={renderPieLabel}
+              labelLine={false}
             >
               {severityData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -164,6 +210,8 @@ export function Charts() {
               outerRadius={90}
               paddingAngle={2}
               dataKey="value"
+              label={renderPieLabel}
+              labelLine={false}
             >
               {callsData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.fill} />

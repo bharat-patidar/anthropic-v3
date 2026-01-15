@@ -1,9 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertTriangle, Lightbulb, MessageSquare } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import { demoBatchTranscripts } from '@/data/demoData';
 import { IssueType, Severity } from '@/types';
 
 const issueTypeLabels: Record<IssueType, string> = {
@@ -22,17 +22,23 @@ const severityClasses: Record<Severity, string> = {
 };
 
 export function CallViewer() {
-  const { selectedCallId, setSelectedCallId, results } = useAppStore();
+  const { selectedCallId, setSelectedCallId, results, transcripts } = useAppStore();
+  const [hoveredIssueId, setHoveredIssueId] = useState<string | null>(null);
 
   if (!selectedCallId || !results) return null;
 
-  const transcript = demoBatchTranscripts.find((t) => t.id === selectedCallId);
+  const transcript = transcripts.find((t) => t.id === selectedCallId);
   const callIssues = results.issues.filter((i) => i.callId === selectedCallId);
 
   if (!transcript) return null;
 
-  // Get all line numbers with issues
-  const highlightedLines = new Set(callIssues.flatMap((i) => i.lineNumbers));
+  // Get line numbers for the currently hovered issue
+  const hoveredIssue = hoveredIssueId
+    ? callIssues.find((i) => i.id === hoveredIssueId)
+    : null;
+  const hoveredLines = hoveredIssue
+    ? new Set(hoveredIssue.lineNumbers)
+    : null;
 
   return (
     <AnimatePresence>
@@ -82,11 +88,18 @@ export function CallViewer() {
                 </h4>
                 <div className="space-y-1">
                   {transcript.lines.map((line, index) => {
-                    const isHighlighted = highlightedLines.has(index);
+                    // Determine highlighting state based on hover
+                    const isRelevant = hoveredLines ? hoveredLines.has(index + 1) : true;
+                    const isDimmed = hoveredLines && !hoveredLines.has(index + 1);
+
                     return (
                       <div
                         key={index}
-                        className={`transcript-line ${isHighlighted ? 'highlighted' : ''}`}
+                        className={`transcript-line ${isRelevant ? 'highlighted' : ''}`}
+                        style={{
+                          opacity: isDimmed ? 0.3 : 1,
+                          transition: 'opacity 0.2s ease-in-out',
+                        }}
                       >
                         <span className="text-xs text-[var(--color-slate-500)] w-8 shrink-0">
                           {line.timestamp || `${index + 1}`}
@@ -120,10 +133,12 @@ export function CallViewer() {
                 {callIssues.map((issue, index) => (
                   <motion.div
                     key={issue.id}
-                    className="glass-card-subtle p-4 space-y-3"
+                    className="glass-card-subtle p-4 space-y-3 cursor-pointer hover:bg-[var(--color-navy-700)] transition-colors"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
+                    onMouseEnter={() => setHoveredIssueId(issue.id)}
+                    onMouseLeave={() => setHoveredIssueId(null)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
