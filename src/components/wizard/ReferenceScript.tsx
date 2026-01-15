@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, RotateCcw, ChevronDown, ChevronUp, SkipForward, Save, Upload, Star } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
@@ -21,15 +21,17 @@ export function ReferenceScript() {
 
   const { templates, saveTemplate, loadTemplate, setDefaultTemplate, getDefaultTemplate, isUsingDatabase, isLoading } = useSaveLoadTemplates('templates_reference_script');
 
-  // Auto-load default template on mount
+  // Auto-load default template on mount (only once)
+  const hasAutoLoaded = useRef(false);
   useEffect(() => {
-    if (!isLoading && templates.length > 0) {
+    if (!isLoading && templates.length > 0 && !hasAutoLoaded.current) {
       const defaultTemplate = getDefaultTemplate();
-      if (defaultTemplate && !referenceScript) {
+      if (defaultTemplate) {
         setReferenceScript(defaultTemplate.content);
+        hasAutoLoaded.current = true;
       }
     }
-  }, [isLoading, templates]);
+  }, [isLoading, templates, getDefaultTemplate, setReferenceScript]);
 
   // Close template menu when clicking outside
   useEffect(() => {

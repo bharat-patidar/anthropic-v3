@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings,
@@ -41,15 +41,17 @@ function CheckInstructionsSaveLoad({
     `templates_check_${checkId}`
   );
 
-  // Auto-load default template on mount
+  // Auto-load default template on mount (only once)
+  const hasAutoLoaded = useRef(false);
   useEffect(() => {
-    if (!isLoading && templates.length > 0) {
+    if (!isLoading && templates.length > 0 && !hasAutoLoaded.current) {
       const defaultTemplate = getDefaultTemplate();
-      if (defaultTemplate && !instructions) {
+      if (defaultTemplate) {
         onLoad(defaultTemplate.content);
+        hasAutoLoaded.current = true;
       }
     }
-  }, [isLoading, templates]);
+  }, [isLoading, templates, getDefaultTemplate, onLoad]);
 
   // Close template menu when clicking outside
   useEffect(() => {
