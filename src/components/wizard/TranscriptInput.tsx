@@ -99,49 +99,47 @@ export function TranscriptInput() {
         console.log('First 200 chars:', transcriptText.substring(0, 200));
 
         // Parse transcript based on speaker indicators
+        // Format: speaker and timestamp on one line, message on next line(s)
         // "setup user" = bot, phone number pattern = customer
         const lines = transcriptText.split('\n');
         const parsedLines = [];
 
         console.log(`Split into ${lines.length} lines`);
 
-        for (const line of lines) {
-          const trimmedLine = line.trim();
-          if (!trimmedLine) continue;
+        let i = 0;
+        while (i < lines.length) {
+          const trimmedLine = lines[i].trim();
 
-          let parsed = false;
+          // Skip empty lines and header lines (like "outbound Call to ...")
+          if (!trimmedLine ||
+              trimmedLine.toLowerCase().includes('outbound call') ||
+              trimmedLine.toLowerCase().includes('inbound call')) {
+            i++;
+            continue;
+          }
+
+          let speaker: 'bot' | 'customer' | null = null;
+          let timestamp: string | undefined = undefined;
 
           // Check if line starts with "setup user" (bot)
           if (trimmedLine.toLowerCase().startsWith('setup user')) {
-            // Extract timestamp and text: "setup user 00:00:00 Text here"
-            const match = trimmedLine.match(/setup\s+user\s+(\d{2}:\d{2}:\d{2})?\s*(.*)/i);
-            if (match && match[2]) {
-              parsedLines.push({
-                speaker: 'bot' as const,
-                text: match[2].trim(),
-                timestamp: match[1] || undefined,
-              });
-              parsed = true;
-            } else {
-              console.warn('Setup user line found but failed to parse:', trimmedLine);
+            speaker = 'bot';
+            // Extract timestamp: "setup user  00:00:01"
+            const match = trimmedLine.match(/setup\s+user\s+(\d{2}:\d{2}:\d{2})/i);
+            if (match) {
+              timestamp = match[1];
             }
           }
           // Check if line starts with phone number (customer)
           else if (/^\d{10,}/.test(trimmedLine)) {
-            // Extract: "919820203664 00:00:01 Text here"
-            const match = trimmedLine.match(/^(\d+)\s+(\d{2}:\d{2}:\d{2})?\s*(.*)/);
-            if (match && match[3]) {
-              parsedLines.push({
-                speaker: 'customer' as const,
-                text: match[3].trim(),
-                timestamp: match[2] || undefined,
-              });
-              parsed = true;
-            } else {
-              console.warn('Phone number line found but failed to parse:', trimmedLine);
+            speaker = 'customer';
+            // Extract timestamp: "919525823316  00:00:13"
+            const match = trimmedLine.match(/^(\d+)\s+(\d{2}:\d{2}:\d{2})/);
+            if (match) {
+              timestamp = match[2];
             }
           }
-          // Fallback: try old [BOT]/[CUSTOMER] format
+          // Fallback: old [BOT]/[CUSTOMER] format on same line as text
           else if (trimmedLine.match(/^\[?(BOT|CUSTOMER|bot|customer)\]?:?\s*(.+)$/i)) {
             const m = trimmedLine.match(/^\[?(BOT|CUSTOMER|bot|customer)\]?:?\s*(.+)$/i);
             if (m) {
@@ -149,12 +147,58 @@ export function TranscriptInput() {
                 speaker: m[1].toLowerCase() as 'bot' | 'customer',
                 text: m[2].trim(),
               });
-              parsed = true;
+              i++;
+              continue;
             }
           }
 
-          if (!parsed && trimmedLine) {
-            console.warn('Line did not match any pattern and was skipped:', trimmedLine.substring(0, 100));
+          // If we found a speaker line, read the message from following lines
+          if (speaker) {
+            i++; // Move to next line
+            const messageLines: string[] = [];
+
+            // Collect all non-empty lines until we hit another speaker line
+            while (i < lines.length) {
+              const nextLine = lines[i].trim();
+
+              // Skip empty lines
+              if (!nextLine) {
+                i++;
+                if (messageLines.length > 0) {
+                  // Empty line after collecting text - might be end of message
+                  // But keep going to see if there's more
+                }
+                continue;
+              }
+
+              // Stop if this is a new speaker line
+              if (nextLine.toLowerCase().startsWith('setup user') || /^\d{10,}/.test(nextLine)) {
+                break;
+              }
+
+              messageLines.push(nextLine);
+              i++;
+            }
+
+            // Combine message lines into one text
+            const text = messageLines.join(' ').trim();
+
+            if (text) {
+              parsedLines.push({
+                speaker,
+                text,
+                timestamp,
+              });
+              console.log(`Parsed ${speaker} at ${timestamp}:`, text.substring(0, 50));
+            } else {
+              console.warn(`Found ${speaker} line at ${timestamp} but no message text`);
+            }
+          } else {
+            // Not a speaker line, skip it
+            if (trimmedLine.length > 0) {
+              console.warn('Line did not match any pattern:', trimmedLine.substring(0, 100));
+            }
+            i++;
           }
         }
 
@@ -199,46 +243,44 @@ export function TranscriptInput() {
         console.log('First 200 chars:', transcriptText.substring(0, 200));
 
         // Parse transcript based on speaker indicators
+        // Format: speaker and timestamp on one line, message on next line(s)
         const lines = transcriptText.split('\n');
         const parsedLines = [];
 
         console.log(`Split into ${lines.length} lines`);
 
-        for (const line of lines) {
-          const trimmedLine = line.trim();
-          if (!trimmedLine) continue;
+        let i = 0;
+        while (i < lines.length) {
+          const trimmedLine = lines[i].trim();
 
-          let parsed = false;
+          // Skip empty lines and header lines
+          if (!trimmedLine ||
+              trimmedLine.toLowerCase().includes('outbound call') ||
+              trimmedLine.toLowerCase().includes('inbound call')) {
+            i++;
+            continue;
+          }
+
+          let speaker: 'bot' | 'customer' | null = null;
+          let timestamp: string | undefined = undefined;
 
           // Check if line starts with "setup user" (bot)
           if (trimmedLine.toLowerCase().startsWith('setup user')) {
-            const match = trimmedLine.match(/setup\s+user\s+(\d{2}:\d{2}:\d{2})?\s*(.*)/i);
-            if (match && match[2]) {
-              parsedLines.push({
-                speaker: 'bot' as const,
-                text: match[2].trim(),
-                timestamp: match[1] || undefined,
-              });
-              parsed = true;
-            } else {
-              console.warn('Setup user line found but failed to parse:', trimmedLine);
+            speaker = 'bot';
+            const match = trimmedLine.match(/setup\s+user\s+(\d{2}:\d{2}:\d{2})/i);
+            if (match) {
+              timestamp = match[1];
             }
           }
           // Check if line starts with phone number (customer)
           else if (/^\d{10,}/.test(trimmedLine)) {
-            const match = trimmedLine.match(/^(\d+)\s+(\d{2}:\d{2}:\d{2})?\s*(.*)/);
-            if (match && match[3]) {
-              parsedLines.push({
-                speaker: 'customer' as const,
-                text: match[3].trim(),
-                timestamp: match[2] || undefined,
-              });
-              parsed = true;
-            } else {
-              console.warn('Phone number line found but failed to parse:', trimmedLine);
+            speaker = 'customer';
+            const match = trimmedLine.match(/^(\d+)\s+(\d{2}:\d{2}:\d{2})/);
+            if (match) {
+              timestamp = match[2];
             }
           }
-          // Fallback: try old [BOT]/[CUSTOMER] format
+          // Fallback: old [BOT]/[CUSTOMER] format on same line as text
           else if (trimmedLine.match(/^\[?(BOT|CUSTOMER|bot|customer)\]?:?\s*(.+)$/i)) {
             const m = trimmedLine.match(/^\[?(BOT|CUSTOMER|bot|customer)\]?:?\s*(.+)$/i);
             if (m) {
@@ -246,12 +288,52 @@ export function TranscriptInput() {
                 speaker: m[1].toLowerCase() as 'bot' | 'customer',
                 text: m[2].trim(),
               });
-              parsed = true;
+              i++;
+              continue;
             }
           }
 
-          if (!parsed && trimmedLine) {
-            console.warn('Line did not match any pattern:', trimmedLine.substring(0, 100));
+          // If we found a speaker line, read the message from following lines
+          if (speaker) {
+            i++; // Move to next line
+            const messageLines: string[] = [];
+
+            // Collect all non-empty lines until we hit another speaker line
+            while (i < lines.length) {
+              const nextLine = lines[i].trim();
+
+              // Skip empty lines
+              if (!nextLine) {
+                i++;
+                continue;
+              }
+
+              // Stop if this is a new speaker line
+              if (nextLine.toLowerCase().startsWith('setup user') || /^\d{10,}/.test(nextLine)) {
+                break;
+              }
+
+              messageLines.push(nextLine);
+              i++;
+            }
+
+            // Combine message lines into one text
+            const text = messageLines.join(' ').trim();
+
+            if (text) {
+              parsedLines.push({
+                speaker,
+                text,
+                timestamp,
+              });
+              console.log(`Parsed ${speaker} at ${timestamp}:`, text.substring(0, 50));
+            }
+          } else {
+            // Not a speaker line, skip it
+            if (trimmedLine.length > 0) {
+              console.warn('Line did not match any pattern:', trimmedLine.substring(0, 100));
+            }
+            i++;
           }
         }
 
