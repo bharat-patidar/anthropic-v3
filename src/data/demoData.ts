@@ -376,9 +376,20 @@ export const demoGeneralFixes: Fix[] = [
 ];
 
 // CSV format demo data - each row contains one complete call transcript
-export const demoCSVContent = `transcript
+// Format matches user's actual data: one "Transcript" column, each cell has full call transcript
+export const demoCSVContent = `Transcript
+outbound Call to 919820203664
+setup user 00:00:00 Namaste!
+919820203664 00:00:01 the person
+setup user 00:00:01 This is
+919820203664 00:00:02 outbound Call to 919525823316
+setup user 00:00:01 Namaste! This is Meera calling on behalf of RBL Bank on a recorded line. Am I speaking with PRINCE KUMAR Ji?
+919525823316 00:00:13 hi
+919525823316 00:00:14 hindi speaking
+outbound Call to 919813066672
+setup user 00:00:00 Namaste!
+919813066672 00:00:00 namaste
+outbound Call to 918810324889
+setup user 00:00:00 Namaste! This is Meera calling on behalf of RBL Bank on a recorded line. Am I speaking with MS SHWETA MAHAWAR Ji?
 [BOT]: Hello! Welcome to TechSupport. How can I assist you today? [CUSTOMER]: Hi, I need help with my internet connection. It keeps dropping. [BOT]: I understand you're having connectivity issues. Let me help you troubleshoot that. [CUSTOMER]: Yes please, it's been happening for two days now. [BOT]: Please restart your router by unplugging it for 30 seconds. [CUSTOMER]: I already tried that three times. [BOT]: I see. Have you tried restarting your router? [CUSTOMER]: Yes, I just told you I did that already. [BOT]: I understand. Let me suggest restarting your router by unplugging it for 30 seconds. [CUSTOMER]: Are you even listening? I said I already restarted it multiple times! [BOT]: I apologize for the confusion. Have you tried power cycling your router? [CUSTOMER]: Yeh kya ho raha hai? Mujhe Hindi mein baat karni hai. [BOT]: I understand you're frustrated. Let me check your account details. [CUSTOMER]: Main Hindi mein baat kar raha hoon, aap English mein kyun jawab de rahe ho? [BOT]: Could you please provide your account number so I can look into this further? [CUSTOMER]: Fine, my account number is 12345678. [BOT]: Hello! Welcome to TechSupport. How can I assist you today? [CUSTOMER]: What? We were already talking! Why are you greeting me again? [BOT]: I apologize for any confusion. How may I help you today? [CUSTOMER]: This is ridiculous. I want to speak to a human. [BOT]: I understand your frustration. Let me transfer you to a human agent. Please hold.
-[BOT]: Hello! Welcome to TechSupport. How can I assist you today? [CUSTOMER]: I want to cancel my subscription. [BOT]: I'm sorry to hear that. Your subscription has been cancelled. [CUSTOMER]: Wait, don't you need to verify my identity first? [BOT]: You're right, I apologize. Can I have your account number? [CUSTOMER]: Mera account number 98765432 hai. [BOT]: Thank you. I've located your account. Are you sure you want to cancel?
-[BOT]: Hello! Welcome to TechSupport. How can I assist you today? [CUSTOMER]: My bill seems too high this month. [BOT]: I'd be happy to help review your bill. Let me pull up your account. [CUSTOMER]: Sure, take your time. [BOT]: I'd be happy to help review your bill. Let me pull up your account. [CUSTOMER]: You just said that... [BOT]: I apologize. I'd be happy to help review your bill. [CUSTOMER]: This bot is broken.
-[BOT]: Hello! Welcome to TechSupport. How can I assist you today? [CUSTOMER]: I need to update my address. [BOT]: Of course! I can help you with that. What is your new address? [CUSTOMER]: 123 Main Street, Apt 4B, New York, NY 10001 [BOT]: Thank you. I've updated your address to 123 Main Street, Apt 4B, New York, NY 10001. [CUSTOMER]: Great, thanks! [BOT]: You're welcome! Is there anything else I can help you with? [CUSTOMER]: No, that's all. Thanks! [BOT]: Thank you for contacting TechSupport. Have a great day!
-[BOT]: Hello! Welcome to TechSupport. How can I assist you today? [CUSTOMER]: My payment didn't go through. [BOT]: I'm sorry to hear about the payment issue. Let me check that for you. [BOT]: Hello! Welcome to TechSupport. How can I assist you today? [CUSTOMER]: Uhh what? We were just talking about my payment. [BOT]: I apologize for the confusion. Could you tell me what you need help with? [CUSTOMER]: Never mind, this is useless.`;
+[BOT]: Hello! Welcome to TechSupport. How can I assist you today? [CUSTOMER]: I want to cancel my subscription. [BOT]: I'm sorry to hear that. Your subscription has been cancelled. [CUSTOMER]: Wait, don't you need to verify my identity first? [BOT]: You're right, I apologize. Can I have your account number? [CUSTOMER]: Mera account number 98765432 hai. [BOT]: Thank you. I've located your account. Are you sure you want to cancel?`;

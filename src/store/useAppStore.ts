@@ -111,12 +111,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   runAnalysis: async () => {
     const { transcripts, checks, referenceEnabled, referenceScript, knowledgeBaseEnabled, knowledgeBase, openaiConfig } = get();
 
-    // Get API key from environment variable only
-    const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
+    // Get API key from environment variable - check both possible names
+    const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '';
 
     // Validate OpenAI configuration
     if (!apiKey.trim()) {
-      alert('OpenAI API key is not configured. Please contact your administrator.');
+      alert('OpenAI API key is not configured. Please set OPENAI_API_KEY or NEXT_PUBLIC_OPENAI_API_KEY in your environment variables.');
       return;
     }
 
@@ -205,12 +205,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { results, referenceEnabled, referenceScript, knowledgeBaseEnabled, knowledgeBase, transcripts, openaiConfig } = get();
     if (!results) return;
 
-    // Get API key from environment variable only
-    const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
+    // Get API key from environment variable - check both possible names
+    const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '';
 
     // Validate OpenAI configuration
     if (!apiKey.trim()) {
-      alert('OpenAI API key is not configured. Please contact your administrator.');
+      alert('OpenAI API key is not configured. Please set OPENAI_API_KEY or NEXT_PUBLIC_OPENAI_API_KEY in your environment variables.');
       return;
     }
 
