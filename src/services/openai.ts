@@ -82,14 +82,49 @@ Return ONLY a JSON array of issues. If no issues are found, return an empty arra
       { role: 'user', content: userPrompt },
     ]);
 
-    // Parse JSON response
-    const jsonMatch = response.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      console.error('No JSON array found in response:', response);
+    // Try to extract JSON array
+    let jsonStr = response.trim();
+
+    // If wrapped in markdown code blocks, remove them
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
+
+    // Find the first [ and last ]
+    const startIdx = jsonStr.indexOf('[');
+    const endIdx = jsonStr.lastIndexOf(']');
+
+    if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
+      console.error('No valid JSON array found in response:', response);
       return [];
     }
 
-    const issues = JSON.parse(jsonMatch[0]);
+    jsonStr = jsonStr.substring(startIdx, endIdx + 1);
+
+    let issues;
+    try {
+      issues = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Attempted to parse:', jsonStr);
+
+      // Try one more time with cleanup
+      try {
+        const cleaned = jsonStr
+          .replace(/,(\s*[}\]])/g, '$1')
+          .replace(/\n/g, ' ')
+          .replace(/\r/g, '');
+        issues = JSON.parse(cleaned);
+      } catch (secondError) {
+        console.error('Failed to parse issues after cleanup:', secondError);
+        return [];
+      }
+    }
+
+    if (!Array.isArray(issues)) {
+      console.error('Parsed result is not an array:', issues);
+      return [];
+    }
 
     // Convert to DetectedIssue format with IDs
     return issues.map((issue: {
@@ -179,14 +214,44 @@ Return JSON: {"scriptFixes": [...], "generalFixes": [...]}`;
       { role: 'user', content: userPrompt },
     ]);
 
-    // Parse JSON response
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('No JSON object found in response:', response);
+    // Try to extract JSON - look for the outermost braces
+    let jsonStr = response.trim();
+
+    // If wrapped in markdown code blocks, remove them
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
+
+    // Find the first { and last }
+    const startIdx = jsonStr.indexOf('{');
+    const endIdx = jsonStr.lastIndexOf('}');
+
+    if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
+      console.error('No valid JSON object found in response:', response);
       return { scriptFixes: [], generalFixes: [] };
     }
 
-    const fixesData = JSON.parse(jsonMatch[0]);
+    jsonStr = jsonStr.substring(startIdx, endIdx + 1);
+
+    let fixesData;
+    try {
+      fixesData = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Attempted to parse:', jsonStr);
+
+      // Try one more time with a more lenient approach
+      try {
+        // Remove any trailing commas before closing brackets/braces
+        const cleaned = jsonStr
+          .replace(/,(\s*[}\]])/g, '$1')
+          .replace(/\n/g, ' ')
+          .replace(/\r/g, '');
+        fixesData = JSON.parse(cleaned);
+      } catch (secondError) {
+        throw new Error(`Failed to parse fix suggestions: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`);
+      }
+    }
 
     // Add IDs to fixes
     const scriptFixes = (fixesData.scriptFixes || []).map((fix: {
