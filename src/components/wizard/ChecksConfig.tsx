@@ -37,6 +37,7 @@ function CheckInstructionsSaveLoad({
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [currentTemplateName, setCurrentTemplateName] = useState<string | null>(null);
   const { templates, saveTemplate, loadTemplate, setDefaultTemplate, getDefaultTemplate, isLoading } = useSaveLoadTemplates(
     `templates_check_${checkId}`
   );
@@ -48,6 +49,7 @@ function CheckInstructionsSaveLoad({
       const defaultTemplate = getDefaultTemplate();
       if (defaultTemplate) {
         onLoad(defaultTemplate.content);
+        setCurrentTemplateName(defaultTemplate.name);
         hasAutoLoaded.current = true;
       }
     }
@@ -83,9 +85,11 @@ function CheckInstructionsSaveLoad({
 
   const handleLoad = (templateId: string) => {
     if (!templateId) return;
+    const template = templates.find(t => t.id === templateId);
     const content = loadTemplate(templateId);
-    if (content) {
+    if (content && template) {
       onLoad(content);
+      setCurrentTemplateName(template.name);
     }
   };
 
@@ -108,7 +112,9 @@ function CheckInstructionsSaveLoad({
             onClick={() => setShowTemplateMenu(!showTemplateMenu)}
             className="w-full px-2 py-1.5 bg-[var(--color-navy-800)] border border-[var(--color-navy-700)] rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-left flex items-center justify-between"
           >
-            <span>Load saved template...</span>
+            <span className={currentTemplateName ? 'text-white' : 'text-[var(--color-slate-400)]'}>
+              {currentTemplateName || 'Load saved template...'}
+            </span>
             <ChevronDown className="w-3 h-3" />
           </button>
 

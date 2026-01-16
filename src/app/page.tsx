@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { Header } from '@/components/ui/Header';
 import { Footer } from '@/components/ui/Footer';
+import { StepNavigator } from '@/components/ui/StepNavigator';
 import { TranscriptInput } from '@/components/wizard/TranscriptInput';
 import { ReferenceScript } from '@/components/wizard/ReferenceScript';
 import { KnowledgeBase } from '@/components/wizard/KnowledgeBase';
@@ -178,6 +179,8 @@ export default function Home() {
       <Header />
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8">
+        {currentStep !== 'running' && <StepNavigator />}
+
         <AnimatePresence mode="wait">
           {currentStep === 'input' && <RunWizardPage key="input" />}
           {currentStep === 'running' && <RunningPage key="running" />}

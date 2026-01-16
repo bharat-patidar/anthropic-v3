@@ -1,12 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Sparkles, Download } from 'lucide-react';
+import { BookOpen, Sparkles, Download, FileText } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { FixCard } from './FixCard';
 
 export function FixesPanel() {
-  const { fixes, referenceEnabled } = useAppStore();
+  const { fixes, referenceEnabled, referenceScript } = useAppStore();
+  const [selectedFixIds, setSelectedFixIds] = useState<Set<string>>(new Set());
+  const [showFinalScript, setShowFinalScript] = useState(false);
+  const [finalScript, setFinalScript] = useState('');
 
   if (!fixes) return null;
 
@@ -30,6 +34,35 @@ export function FixesPanel() {
   const hasScriptFixes = fixes.scriptFixes.length > 0;
   const hasGeneralFixes = fixes.generalFixes.length > 0;
   const totalFixes = fixes.scriptFixes.length + fixes.generalFixes.length;
+  const allFixes = [...fixes.scriptFixes, ...fixes.generalFixes];
+
+  const toggleFixSelection = (fixId: string) => {
+    const newSelected = new Set(selectedFixIds);
+    if (newSelected.has(fixId)) {
+      newSelected.delete(fixId);
+    } else {
+      newSelected.add(fixId);
+    }
+    setSelectedFixIds(newSelected);
+  };
+
+  const generateFinalScript = () => {
+    const selectedFixes = allFixes.filter(fix => selectedFixIds.has(fix.id));
+
+    let script = referenceScript || '';
+    let additions = '\n\n# Selected Improvements:\n\n';
+
+    selectedFixes.forEach((fix, index) => {
+      additions += `## ${index + 1}. ${fix.problem}\n\n`;
+      additions += `${fix.suggestion}\n\n`;
+      additions += `Example: ${fix.exampleResponse}\n\n`;
+      additions += `Placement: ${fix.placementHint}\n\n`;
+      additions += '---\n\n';
+    });
+
+    setFinalScript(script + additions);
+    setShowFinalScript(true);
+  };
 
   return (
     <div className="space-y-8">
@@ -45,10 +78,21 @@ export function FixesPanel() {
             {totalFixes} actionable fix{totalFixes !== 1 ? 'es' : ''} based on detected issues
           </p>
         </div>
-        <button className="btn-secondary flex items-center gap-2" onClick={exportFixes}>
-          <Download className="w-4 h-4" />
-          Export Fixes
-        </button>
+        <div className="flex items-center gap-3">
+          {selectedFixIds.size > 0 && (
+            <button
+              className="btn-primary flex items-center gap-2"
+              onClick={generateFinalScript}
+            >
+              <FileText className="w-4 h-4" />
+              Generate Final Script ({selectedFixIds.size})
+            </button>
+          )}
+          <button className="btn-secondary flex items-center gap-2" onClick={exportFixes}>
+            <Download className="w-4 h-4" />
+            Export Fixes
+          </button>
+        </div>
       </motion.div>
 
       {/* Script/Prompt Fixes (Reference-aware) */}
@@ -76,7 +120,13 @@ export function FixesPanel() {
           {hasScriptFixes ? (
             <div className="space-y-4">
               {fixes.scriptFixes.map((fix, index) => (
-                <FixCard key={fix.id} fix={fix} index={index} />
+                <FixCard
+                  key={fix.id}
+                  fix={fix}
+                  index={index}
+                  isSelected={selectedFixIds.has(fix.id)}
+                  onToggleSelect={() => toggleFixSelection(fix.id)}
+                />
               ))}
             </div>
           ) : (
@@ -117,6 +167,8 @@ export function FixesPanel() {
                 key={fix.id}
                 fix={fix}
                 index={fixes.scriptFixes.length + index}
+                isSelected={selectedFixIds.has(fix.id)}
+                onToggleSelect={() => toggleFixSelection(fix.id)}
               />
             ))}
           </div>
@@ -146,6 +198,43 @@ export function FixesPanel() {
             Based on the enabled checks, no significant issues were found that require fixes.
           </p>
         </motion.div>
+      )}
+
+      {/* Final Script Modal */}
+      {showFinalScript && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+          <motion.div
+            className="glass-card max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <div className="p-4 border-b border-[var(--color-navy-700)] flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">Final Updated Script</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  className="btn-primary flex items-center gap-2 text-sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(finalScript);
+                  }}
+                >
+                  <Download className="w-4 h-4" />
+                  Copy to Clipboard
+                </button>
+                <button
+                  className="btn-secondary text-sm"
+                  onClick={() => setShowFinalScript(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1">
+              <pre className="text-sm text-[var(--color-slate-200)] whitespace-pre-wrap font-mono bg-[var(--color-navy-900)] p-4 rounded-lg border border-[var(--color-navy-700)]">
+                {finalScript}
+              </pre>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );

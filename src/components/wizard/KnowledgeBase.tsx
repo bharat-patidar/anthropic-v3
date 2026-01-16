@@ -12,6 +12,7 @@ export function KnowledgeBase() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [currentTemplateName, setCurrentTemplateName] = useState<string | null>(null);
 
   const { templates, saveTemplate, loadTemplate, setDefaultTemplate, getDefaultTemplate, isUsingDatabase, isLoading } = useSaveLoadTemplates('templates_knowledge_base');
 
@@ -22,6 +23,7 @@ export function KnowledgeBase() {
       const defaultTemplate = getDefaultTemplate();
       if (defaultTemplate) {
         setKnowledgeBase(defaultTemplate.content);
+        setCurrentTemplateName(defaultTemplate.name);
         hasAutoLoaded.current = true;
       }
     }
@@ -57,9 +59,11 @@ export function KnowledgeBase() {
 
   const handleLoad = (templateId: string) => {
     if (!templateId) return;
+    const template = templates.find(t => t.id === templateId);
     const content = loadTemplate(templateId);
-    if (content) {
+    if (content && template) {
       setKnowledgeBase(content);
+      setCurrentTemplateName(template.name);
     }
   };
 
@@ -150,7 +154,9 @@ export function KnowledgeBase() {
                   className="w-full px-3 py-2 bg-[var(--color-navy-800)] border border-[var(--color-navy-700)] rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-left flex items-center justify-between disabled:opacity-50"
                   disabled={!knowledgeBaseEnabled}
                 >
-                  <span>Load saved template...</span>
+                  <span className={currentTemplateName ? 'text-white' : 'text-[var(--color-slate-400)]'}>
+                    {currentTemplateName || 'Load saved template...'}
+                  </span>
                   <ChevronDown className="w-4 h-4" />
                 </button>
 
