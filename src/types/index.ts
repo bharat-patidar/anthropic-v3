@@ -90,6 +90,11 @@ export interface SavedAnalysis {
   name: string;
   createdAt: string;
   updatedAt: string;
+  stats?: {
+    totalCalls: number;
+    avgIssuesPerCall: number;
+    totalIssues: number;
+  };
 }
 
 export interface SavedAnalysisWithState extends SavedAnalysis {

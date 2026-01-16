@@ -74,15 +74,41 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(rows[0]);
     }
 
-    // Otherwise, fetch all analyses (without full state for performance)
+    // Otherwise, fetch all analyses with state to calculate stats
     const rows = await sql`
-      SELECT id, name, created_at as "createdAt", updated_at as "updatedAt"
+      SELECT id, name, state, created_at as "createdAt", updated_at as "updatedAt"
       FROM analyses
       WHERE storage_key = ${storageKey}
       ORDER BY updated_at DESC
     `;
 
-    return NextResponse.json(rows);
+    // Calculate stats for each analysis
+    const analysesWithStats = rows.map((row: any) => {
+      const state = row.state;
+      let stats = {
+        totalCalls: 0,
+        avgIssuesPerCall: 0,
+        totalIssues: 0,
+      };
+
+      if (state && state.results) {
+        stats.totalCalls = state.results.totalCalls || 0;
+        stats.totalIssues = state.results.issues?.length || 0;
+        stats.avgIssuesPerCall = stats.totalCalls > 0
+          ? Math.round((stats.totalIssues / stats.totalCalls) * 10) / 10
+          : 0;
+      }
+
+      return {
+        id: row.id,
+        name: row.name,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        stats,
+      };
+    });
+
+    return NextResponse.json(analysesWithStats);
   } catch (error) {
     console.error('Error fetching analyses:', error);
     return NextResponse.json({ error: 'Database error' }, { status: 500 });

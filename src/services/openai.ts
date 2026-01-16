@@ -60,10 +60,20 @@ export async function analyzeTranscript(
 
   console.log(`Analyzing transcript ${transcript.id} with ${transcript.lines.length} lines`);
 
-  // Build checks description
+  // Build checks description with their IDs
   const checksDescription = enabledChecks
-    .map((check) => `- ${check.name}: ${check.instructions}`)
+    .map((check) => `- ${check.name} (ID: ${check.id}): ${check.instructions}`)
     .join('\n');
+
+  // Build valid issue types list (predefined + custom check IDs)
+  const validIssueTypes = [
+    'flow_deviation',
+    'repetition_loop',
+    'language_mismatch',
+    'mid_call_restart',
+    'quality_issue',
+    ...enabledChecks.filter(c => c.custom).map(c => c.id)
+  ];
 
   const systemPrompt = `You are an expert AI voice bot quality analyst. Your task is to analyze call transcripts and detect issues based on specific checks.
 
@@ -74,7 +84,9 @@ ${referenceScript ? `Reference Script/Flow:\n${referenceScript}\n` : ''}
 ${knowledgeBase ? `Knowledge Base:\n${knowledgeBase}\n` : ''}
 
 For each issue found, provide a JSON object with:
-- type: one of [flow_deviation, repetition_loop, language_mismatch, mid_call_restart, quality_issue]
+- type: Use the check ID for the issue type. Valid types are: [${validIssueTypes.join(', ')}]
+  * For standard checks, use: flow_deviation (for flow_compliance check), repetition_loop (for repetition check), language_mismatch (for language_alignment check), mid_call_restart (for restart_reset check), or quality_issue (for general_quality check)
+  * For custom checks, use the exact check ID provided above
 - severity: one of [low, medium, high, critical]
 - confidence: number between 0-100
 - evidenceSnippet: the exact text from the transcript that demonstrates the issue

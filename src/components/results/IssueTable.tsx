@@ -22,12 +22,35 @@ const severityClasses: Record<Severity, string> = {
 };
 
 export function IssueTable() {
-  const { results, setSelectedCallId } = useAppStore();
+  const { results, setSelectedCallId, checks } = useAppStore();
+
+  // Dynamic label lookup that handles custom checks
+  const getIssueTypeLabel = (type: IssueType): string => {
+    // First, check if it's a predefined type
+    if (type in issueTypeLabels) {
+      return issueTypeLabels[type];
+    }
+
+    // Try to find a check with matching ID
+    const matchingCheck = checks.find(check => check.id === type);
+    if (matchingCheck) {
+      return matchingCheck.name;
+    }
+
+    // Fallback: format the type nicely
+    return type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
   const [typeFilter, setTypeFilter] = useState<IssueType | 'all'>('all');
   const [severityFilter, setSeverityFilter] = useState<Severity | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   if (!results) return null;
+
+  // Get unique issue types from actual results
+  const uniqueIssueTypes = Array.from(new Set(results.issues.map(issue => issue.type)));
 
   const filteredIssues = results.issues.filter((issue) => {
     if (typeFilter !== 'all' && issue.type !== typeFilter) return false;
@@ -80,9 +103,9 @@ export function IssueTable() {
               onChange={(e) => setTypeFilter(e.target.value as IssueType | 'all')}
             >
               <option value="all">All Types</option>
-              {Object.entries(issueTypeLabels).map(([type, label]) => (
+              {uniqueIssueTypes.map((type) => (
                 <option key={type} value={type}>
-                  {label}
+                  {getIssueTypeLabel(type)}
                 </option>
               ))}
             </select>
@@ -129,7 +152,7 @@ export function IssueTable() {
                 <td className="font-mono text-sm">{issue.callId}</td>
                 <td>
                   <span className="text-[var(--color-slate-200)]">
-                    {issueTypeLabels[issue.type]}
+                    {getIssueTypeLabel(issue.type)}
                   </span>
                 </td>
                 <td>

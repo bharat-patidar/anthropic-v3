@@ -245,27 +245,27 @@ export function AnalysisManager() {
           }}
         />
 
-        {/* Binary code rain effect */}
-        {[...Array(10)].map((_, i) => (
+        {/* Shining stars illuminating */}
+        {[...Array(50)].map((_, i) => (
           <motion.div
-            key={`binary-${i}`}
-            className="absolute text-green-400 opacity-20 font-mono text-xs"
+            key={`star-${i}`}
+            className="absolute w-1 h-1 bg-white rounded-full"
             style={{
-              left: `${i * 10 + 5}%`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              boxShadow: '0 0 4px 1px rgba(255, 255, 255, 0.8)',
             }}
-            initial={{ y: -20 }}
             animate={{
-              y: '120vh',
+              opacity: [0.2, 1, 0.2],
+              scale: [0.5, 1.5, 0.5],
             }}
             transition={{
-              duration: 15 + Math.random() * 5,
+              duration: 3 + Math.random() * 4,
               repeat: Infinity,
-              ease: 'linear',
-              delay: i * 2,
+              delay: Math.random() * 5,
+              ease: 'easeInOut',
             }}
-          >
-            {Array.from({ length: 20 }, () => Math.random() > 0.5 ? '1' : '0').join('\n')}
-          </motion.div>
+          />
         ))}
       </div>
 
@@ -393,6 +393,28 @@ export function AnalysisManager() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Analytics Stats */}
+                    {analysis.stats && analysis.stats.totalCalls > 0 && (
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="bg-[var(--color-navy-800)] rounded-lg p-3">
+                          <div className="text-2xl font-bold text-blue-400">
+                            {analysis.stats.totalCalls}
+                          </div>
+                          <div className="text-xs text-[var(--color-slate-400)] mt-1">
+                            Total Calls
+                          </div>
+                        </div>
+                        <div className="bg-[var(--color-navy-800)] rounded-lg p-3">
+                          <div className="text-2xl font-bold text-cyan-400">
+                            {analysis.stats.avgIssuesPerCall}
+                          </div>
+                          <div className="text-xs text-[var(--color-slate-400)] mt-1">
+                            Avg Issues/Call
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Metadata */}
                     <div className="space-y-2 mb-4">

@@ -109,42 +109,110 @@ export const demoBatchTranscripts: Transcript[] = [
 ];
 
 // Default reference script
-export const defaultReferenceScript = `# Customer Support Call Flow
+export const defaultReferenceScript = `# TechSupport Customer Service Call Flow
 
-## 1. Greeting
-- Welcome the customer warmly
-- Introduce yourself and the company
-- Ask how you can help
+## 1. Greeting & Introduction (Required First Step)
+Bot should say:
+"Hello! Welcome to TechSupport. My name is [Bot Name]. How can I assist you today?"
 
-## 2. Identity Verification
-- Ask for account number or registered phone number
-- Verify customer name
-- Confirm last 4 digits of payment method (if needed)
+Key Requirements:
+- Always start with a warm greeting
+- Mention company name (TechSupport)
+- Use professional and friendly tone
+- Wait for customer to describe their issue
 
-## 3. Issue Identification
-- Listen to customer's problem
-- Ask clarifying questions
-- Summarize the issue back to the customer
+## 2. Identity Verification (Required Before Any Account Actions)
+IMPORTANT: MUST verify identity before accessing account information, making changes, or processing cancellations.
 
-## 4. Troubleshooting / Resolution
-- Follow the appropriate troubleshooting guide
-- Explain each step clearly
-- Check if the solution worked
+Verification Steps:
+a) Request account number or registered phone number
+   "To help you with this, I'll need to verify your account. Could you please provide your account number or the phone number registered with your account?"
 
-## 5. Language Handling
-- If customer switches language, acknowledge and switch if possible
-- If unable to switch, offer to transfer to appropriate language support
+b) Verify customer name
+   "Thank you. Can you please confirm the name on the account?"
 
-## 6. Escalation (if needed)
-- Acknowledge when issue is beyond scope
-- Explain the escalation process
-- Transfer to human agent smoothly
+c) For sensitive actions (cancellations, payments, address changes):
+   "For security purposes, can you confirm the last 4 digits of your payment method on file?"
 
-## 7. Closing
-- Summarize what was resolved
-- Ask if there's anything else
-- Thank the customer
-- End call professionally`;
+⚠️ NEVER skip verification - This is a critical compliance requirement
+
+## 3. Issue Identification & Active Listening
+- Listen carefully to customer's problem without interrupting
+- Take note of key details mentioned by customer
+- Ask clarifying questions to understand the full context
+- Summarize the issue back to confirm understanding:
+  "Just to confirm, you're experiencing [issue summary]. Is that correct?"
+
+Important: Track what customer has ALREADY TRIED to avoid suggesting the same solutions
+
+## 4. Troubleshooting & Resolution
+Follow systematic troubleshooting:
+- Start with the most relevant solution based on the issue
+- BEFORE suggesting a solution, ask: "Have you already tried [solution]?"
+- Explain each step clearly with simple language
+- Give customer time to complete each step
+- Confirm if each step worked before moving to next
+
+Common Issues:
+- Internet connectivity: Check router status → Restart router → Check cables → Check service status
+- Billing inquiries: Review account → Explain charges → Offer payment plan if needed
+- Account changes: Verify identity → Make requested changes → Confirm changes with customer
+
+⚠️ NEVER repeat the same suggestion if customer says they already tried it
+
+## 5. Language Handling & Multilingual Support
+When customer switches to a different language:
+1. Acknowledge the language switch immediately
+2. If bot supports that language, respond in that language:
+   "I understand you'd prefer to speak in [language]. I can help you in [language]."
+3. If bot does NOT support that language:
+   "I apologize, I notice you're speaking [language]. While I don't speak [language] fluently, I can transfer you to a representative who does. Would that be helpful?"
+
+⚠️ NEVER ignore language switches or continue only in English when customer clearly switched languages
+
+## 6. Context Maintenance & Memory
+Throughout the conversation:
+- Remember what customer has told you (their issue, what they've tried, their account details)
+- Reference previous parts of the conversation naturally
+- NEVER ask for information customer already provided
+- NEVER restart the conversation or re-greet mid-call
+- Keep track of conversation history and build on it
+
+⚠️ WARNING: If you lose context or restart, this is a CRITICAL FAILURE
+
+## 7. Escalation (When Needed)
+Escalate to human agent when:
+- Issue is beyond bot's capability to resolve
+- Customer explicitly requests human support
+- Customer is frustrated after 2-3 failed attempts
+- Technical issue requires specialized knowledge
+
+Escalation Script:
+"I understand this issue requires additional expertise. Let me transfer you to one of our specialized agents who can help you further. They'll have full context of our conversation. Please hold for just a moment."
+
+## 8. Closing & Wrap-up
+Before ending the call:
+1. Summarize what was accomplished:
+   "To recap, we've [summary of actions taken]"
+2. Confirm issue is resolved:
+   "Does this resolve your issue, or is there anything else I can help you with today?"
+3. Offer additional help:
+   "Is there anything else I can assist you with?"
+4. Thank customer professionally:
+   "Thank you for contacting TechSupport. Have a great day!"
+
+⚠️ NEVER end the call abruptly without proper closing
+
+---
+
+## Critical Rules Summary:
+1. ✓ Always start with greeting, NEVER re-greet mid-call
+2. ✓ MUST verify identity before account actions
+3. ✓ Track what customer already tried, NEVER repeat suggestions
+4. ✓ Acknowledge and adapt to language switches
+5. ✓ Maintain context throughout entire conversation
+6. ✓ Escalate when appropriate, don't keep customer stuck
+7. ✓ Close professionally with summary`;
 
 // Default check configurations
 export const defaultChecks: CheckConfig[] = [
@@ -154,8 +222,58 @@ export const defaultChecks: CheckConfig[] = [
     description: 'Detects where bot deviated from the reference script/flow. Only runs when reference script is enabled.',
     enabled: true,
     requiresReference: true,
-    instructions: 'Check if the bot follows the expected conversation flow defined in the reference script. Flag any skipped steps, out-of-order actions, or missing verifications.',
-    defaultInstructions: 'Check if the bot follows the expected conversation flow defined in the reference script. Flag any skipped steps, out-of-order actions, or missing verifications.',
+    instructions: `Analyze if the bot follows the expected conversation flow defined in the reference script. Pay special attention to:
+
+CRITICAL VIOLATIONS (High/Critical Severity):
+- Skipping identity verification before account actions (e.g., cancellations, account changes, viewing account info)
+- Jumping directly to solutions without understanding the problem
+- Missing required steps in order (greeting → verification → issue identification → resolution)
+- Making account changes without proper verification
+
+MODERATE VIOLATIONS (Medium Severity):
+- Out-of-order execution of non-critical steps
+- Skipping optional but recommended steps (like summarizing the issue back to customer)
+- Missing closing/wrap-up steps
+- Not asking clarifying questions when issue is unclear
+
+MINOR VIOLATIONS (Low Severity):
+- Slight deviations in wording while maintaining intent
+- Skipping non-essential pleasantries
+- Different order for non-sequential steps
+
+For each violation found, specify:
+1. Which step was skipped or done out of order
+2. Where in the reference script this step is defined
+3. Why this matters (impact on customer experience or compliance)
+4. Line numbers where this occurred
+
+Example: "Bot jumped directly to suggesting router restart without first verifying customer's identity or asking what troubleshooting steps they've already tried. This violates the required Identity Verification (Step 2) and Issue Identification (Step 3) from the reference script."`,
+    defaultInstructions: `Analyze if the bot follows the expected conversation flow defined in the reference script. Pay special attention to:
+
+CRITICAL VIOLATIONS (High/Critical Severity):
+- Skipping identity verification before account actions (e.g., cancellations, account changes, viewing account info)
+- Jumping directly to solutions without understanding the problem
+- Missing required steps in order (greeting → verification → issue identification → resolution)
+- Making account changes without proper verification
+
+MODERATE VIOLATIONS (Medium Severity):
+- Out-of-order execution of non-critical steps
+- Skipping optional but recommended steps (like summarizing the issue back to customer)
+- Missing closing/wrap-up steps
+- Not asking clarifying questions when issue is unclear
+
+MINOR VIOLATIONS (Low Severity):
+- Slight deviations in wording while maintaining intent
+- Skipping non-essential pleasantries
+- Different order for non-sequential steps
+
+For each violation found, specify:
+1. Which step was skipped or done out of order
+2. Where in the reference script this step is defined
+3. Why this matters (impact on customer experience or compliance)
+4. Line numbers where this occurred
+
+Example: "Bot jumped directly to suggesting router restart without first verifying customer's identity or asking what troubleshooting steps they've already tried. This violates the required Identity Verification (Step 2) and Issue Identification (Step 3) from the reference script."`,
   },
   {
     id: 'repetition',
@@ -163,8 +281,70 @@ export const defaultChecks: CheckConfig[] = [
     description: 'Detects repeated phrases and conversation loops where the bot says the same thing multiple times.',
     enabled: true,
     requiresReference: false,
-    instructions: 'Identify instances where the bot repeats the same or very similar responses multiple times. Flag loops where the bot seems stuck suggesting the same solution.',
-    defaultInstructions: 'Identify instances where the bot repeats the same or very similar responses multiple times. Flag loops where the bot seems stuck suggesting the same solution.',
+    instructions: `Detect instances where the bot repeats itself or gets stuck in loops. Look for:
+
+CRITICAL LOOPS (High/Critical Severity):
+- Bot suggests the exact same solution 3+ times after customer says they already tried it
+- Bot asks the same question multiple times in a row
+- Bot gives the same response word-for-word within a short timespan (3-5 exchanges)
+- Customer explicitly points out the repetition (e.g., "You just said that", "I already told you")
+
+MODERATE REPETITION (Medium Severity):
+- Bot suggests the same solution 2 times after customer mentions trying it
+- Bot uses the exact same phrasing for different questions (copy-paste responses)
+- Bot repeats pleasantries or acknowledgments excessively (e.g., "I understand" 4+ times in a row)
+- Semantic repetition: saying the same thing in slightly different words without adding value
+
+LOW-LEVEL REPETITION (Low Severity):
+- Normal confirmation phrases used appropriately (e.g., "I understand" once or twice)
+- Legitimate restatement for clarity (e.g., summarizing customer's issue)
+- Standard call flow phrases that are meant to be consistent (greetings, closings)
+
+Key Indicators:
+1. Customer says "I already tried that" or "You just said that" → Strong signal
+2. Same keywords/phrases appear in multiple consecutive bot messages
+3. Bot ignores customer's feedback about already trying something
+4. Conversation doesn't progress - same topic discussed in circles
+
+For each repetition issue found:
+- Quote the repeated text from all instances
+- Count how many times it was repeated
+- Note if customer expressed frustration about the repetition
+- Explain why this creates a poor experience
+
+Example: "Bot suggested 'restart your router' three times (lines 5, 7, 9) even after customer explicitly said 'I already tried that three times' (line 6). This shows the bot is not tracking conversation context or listening to customer feedback."`,
+    defaultInstructions: `Detect instances where the bot repeats itself or gets stuck in loops. Look for:
+
+CRITICAL LOOPS (High/Critical Severity):
+- Bot suggests the exact same solution 3+ times after customer says they already tried it
+- Bot asks the same question multiple times in a row
+- Bot gives the same response word-for-word within a short timespan (3-5 exchanges)
+- Customer explicitly points out the repetition (e.g., "You just said that", "I already told you")
+
+MODERATE REPETITION (Medium Severity):
+- Bot suggests the same solution 2 times after customer mentions trying it
+- Bot uses the exact same phrasing for different questions (copy-paste responses)
+- Bot repeats pleasantries or acknowledgments excessively (e.g., "I understand" 4+ times in a row)
+- Semantic repetition: saying the same thing in slightly different words without adding value
+
+LOW-LEVEL REPETITION (Low Severity):
+- Normal confirmation phrases used appropriately (e.g., "I understand" once or twice)
+- Legitimate restatement for clarity (e.g., summarizing customer's issue)
+- Standard call flow phrases that are meant to be consistent (greetings, closings)
+
+Key Indicators:
+1. Customer says "I already tried that" or "You just said that" → Strong signal
+2. Same keywords/phrases appear in multiple consecutive bot messages
+3. Bot ignores customer's feedback about already trying something
+4. Conversation doesn't progress - same topic discussed in circles
+
+For each repetition issue found:
+- Quote the repeated text from all instances
+- Count how many times it was repeated
+- Note if customer expressed frustration about the repetition
+- Explain why this creates a poor experience
+
+Example: "Bot suggested 'restart your router' three times (lines 5, 7, 9) even after customer explicitly said 'I already tried that three times' (line 6). This shows the bot is not tracking conversation context or listening to customer feedback."`,
   },
   {
     id: 'language_alignment',
@@ -172,8 +352,86 @@ export const defaultChecks: CheckConfig[] = [
     description: 'Detects language mismatch when customer switches to a different language but bot continues in the original language.',
     enabled: true,
     requiresReference: false,
-    instructions: 'Detect when the customer switches to a different language (e.g., Hindi, Spanish) and the bot fails to acknowledge or adapt. Flag continued responses in the wrong language.',
-    defaultInstructions: 'Detect when the customer switches to a different language (e.g., Hindi, Spanish) and the bot fails to acknowledge or adapt. Flag continued responses in the wrong language.',
+    instructions: `Detect language misalignment where customer switches languages but bot fails to acknowledge or adapt. Analyze:
+
+CRITICAL MISALIGNMENT (High/Critical Severity):
+- Customer switches to a different language (Hindi, Spanish, etc.) for 2+ consecutive messages
+- Bot completely ignores the language switch and continues in original language (usually English)
+- Customer explicitly asks to speak in their language (e.g., "Can we speak in Hindi?", "Quiero hablar en español")
+- Bot proceeds with important account actions while customer is communicating in a different language
+
+Common Language Switches to Detect:
+- Hindi: Words like "main", "mujhe", "kya", "hai", "mein", "hoon", "kyun"
+- Spanish: "Quiero", "necesito", "hablar", "español", "por favor"
+- French: "Je", "parler", "français", "s'il vous plaît"
+- Any non-English phrases or sentences
+
+MODERATE MISALIGNMENT (Medium Severity):
+- Customer uses 1-2 words in another language but bot doesn't acknowledge
+- Bot asks customer to repeat in English without offering language support
+- Delayed acknowledgment (bot ignores first language switch, only responds after 2nd)
+
+WHAT IS NOT AN ISSUE (Don't Flag):
+- Customer uses occasional foreign words within English sentences (code-switching)
+- Bot appropriately offers language support or transfer
+- Bot successfully switches to customer's preferred language
+- Single non-English word that's part of a name or technical term
+
+Bot Should Respond With (when language switch detected):
+1. Acknowledge the language switch immediately
+2. Either:
+   a) "I understand you'd prefer to speak in [language]. I can help you in [language]." (if bot supports it)
+   OR
+   b) "I notice you're speaking [language]. While I primarily speak English, I can transfer you to a [language]-speaking representative. Would that help?"
+
+For each language misalignment found:
+- Identify the language customer switched to
+- Quote the customer messages in that language with line numbers
+- Count how many messages bot ignored the language switch
+- Note if customer expressed frustration about language barrier
+- Specify what bot should have done instead
+
+Example: "Customer switched to Hindi at line 12 ('Yeh kya ho raha hai? Mujhe Hindi mein baat karni hai.') and continued in Hindi at line 14 ('Main Hindi mein baat kar raha hoon...'). Bot ignored both messages and continued responding only in English (lines 13, 15). Bot should have acknowledged the language preference and either switched to Hindi or offered to transfer to a Hindi-speaking agent."`,
+    defaultInstructions: `Detect language misalignment where customer switches languages but bot fails to acknowledge or adapt. Analyze:
+
+CRITICAL MISALIGNMENT (High/Critical Severity):
+- Customer switches to a different language (Hindi, Spanish, etc.) for 2+ consecutive messages
+- Bot completely ignores the language switch and continues in original language (usually English)
+- Customer explicitly asks to speak in their language (e.g., "Can we speak in Hindi?", "Quiero hablar en español")
+- Bot proceeds with important account actions while customer is communicating in a different language
+
+Common Language Switches to Detect:
+- Hindi: Words like "main", "mujhe", "kya", "hai", "mein", "hoon", "kyun"
+- Spanish: "Quiero", "necesito", "hablar", "español", "por favor"
+- French: "Je", "parler", "français", "s'il vous plaît"
+- Any non-English phrases or sentences
+
+MODERATE MISALIGNMENT (Medium Severity):
+- Customer uses 1-2 words in another language but bot doesn't acknowledge
+- Bot asks customer to repeat in English without offering language support
+- Delayed acknowledgment (bot ignores first language switch, only responds after 2nd)
+
+WHAT IS NOT AN ISSUE (Don't Flag):
+- Customer uses occasional foreign words within English sentences (code-switching)
+- Bot appropriately offers language support or transfer
+- Bot successfully switches to customer's preferred language
+- Single non-English word that's part of a name or technical term
+
+Bot Should Respond With (when language switch detected):
+1. Acknowledge the language switch immediately
+2. Either:
+   a) "I understand you'd prefer to speak in [language]. I can help you in [language]." (if bot supports it)
+   OR
+   b) "I notice you're speaking [language]. While I primarily speak English, I can transfer you to a [language]-speaking representative. Would that help?"
+
+For each language misalignment found:
+- Identify the language customer switched to
+- Quote the customer messages in that language with line numbers
+- Count how many messages bot ignored the language switch
+- Note if customer expressed frustration about language barrier
+- Specify what bot should have done instead
+
+Example: "Customer switched to Hindi at line 12 ('Yeh kya ho raha hai? Mujhe Hindi mein baat karni hai.') and continued in Hindi at line 14 ('Main Hindi mein baat kar raha hoon...'). Bot ignored both messages and continued responding only in English (lines 13, 15). Bot should have acknowledged the language preference and either switched to Hindi or offered to transfer to a Hindi-speaking agent."`,
   },
   {
     id: 'restart_reset',
@@ -181,8 +439,92 @@ export const defaultChecks: CheckConfig[] = [
     description: 'Detects when bot suddenly starts greeting again mid-call or loses context.',
     enabled: true,
     requiresReference: false,
-    instructions: 'Identify instances where the bot unexpectedly restarts the conversation, repeats the initial greeting mid-call, or appears to lose all prior context.',
-    defaultInstructions: 'Identify instances where the bot unexpectedly restarts the conversation, repeats the initial greeting mid-call, or appears to lose all prior context.',
+    instructions: `Detect instances where the bot loses context, restarts the conversation, or behaves as if the conversation just started. Look for:
+
+CRITICAL CONTEXT LOSS (Critical Severity):
+- Bot repeats the initial greeting ("Hello! Welcome to [company]") in the middle of an ongoing conversation
+- Bot asks "How can I help you?" after customer already explained their problem and conversation was in progress
+- Bot forgets information customer already provided (account number, issue description, name) and asks for it again
+- Bot starts verification process from scratch after customer was already verified
+- Customer explicitly calls out the restart (e.g., "What? We were already talking!", "Why are you greeting me again?")
+
+SEVERE CONTEXT LOSS (High Severity):
+- Bot acts like conversation is starting fresh after several exchanges
+- Bot loses track of what troubleshooting steps were already attempted
+- Bot suggests solutions that were already tried and failed (but not due to repetition - due to forgetting)
+- Bot asks customer to re-explain their issue after it was already discussed in detail
+
+MODERATE CONTEXT LOSS (Medium Severity):
+- Bot forgets specific details mentioned earlier but maintains general conversation flow
+- Bot references wrong information from earlier in the conversation
+- Bot shows inconsistent knowledge of customer's situation
+- Conversation flow feels disjointed or disconnected from previous exchanges
+
+Signals of Context Loss:
+1. Greeting phrases appearing mid-call: "Hello", "Welcome to", "How can I help you today?"
+2. Re-asking for information already provided: account number, name, issue description
+3. Restarting verification or identification steps
+4. Customer confusion: "We were just talking about...", "I already told you..."
+5. Abrupt topic change that ignores previous context
+6. Bot responses that don't relate to immediately preceding customer messages
+
+WHAT IS NOT A CONTEXT LOSS (Don't Flag):
+- Bot asking follow-up clarifying questions
+- Bot confirming information for security/accuracy
+- Bot naturally transitioning to next phase of conversation
+- Bot summarizing previous discussion (this shows good context retention)
+
+For each restart/reset issue found:
+- Identify the exact line where context was lost or restart occurred
+- Quote the bot message that indicates restart (e.g., re-greeting, re-asking)
+- Reference what context should have been maintained
+- Explain the impact on customer experience
+- Note customer's reaction if they pointed it out
+
+Example: "At line 15, bot suddenly says 'Hello! Welcome to TechSupport. How can I assist you today?' This is a full restart mid-call - customer had already explained their payment issue at line 2, provided account number at line 10, and the conversation was well underway. Customer rightfully questions this at line 16: 'What? We were already talking! Why are you greeting me again?' This represents a critical failure in context maintenance."`,
+    defaultInstructions: `Detect instances where the bot loses context, restarts the conversation, or behaves as if the conversation just started. Look for:
+
+CRITICAL CONTEXT LOSS (Critical Severity):
+- Bot repeats the initial greeting ("Hello! Welcome to [company]") in the middle of an ongoing conversation
+- Bot asks "How can I help you?" after customer already explained their problem and conversation was in progress
+- Bot forgets information customer already provided (account number, issue description, name) and asks for it again
+- Bot starts verification process from scratch after customer was already verified
+- Customer explicitly calls out the restart (e.g., "What? We were already talking!", "Why are you greeting me again?")
+
+SEVERE CONTEXT LOSS (High Severity):
+- Bot acts like conversation is starting fresh after several exchanges
+- Bot loses track of what troubleshooting steps were already attempted
+- Bot suggests solutions that were already tried and failed (but not due to repetition - due to forgetting)
+- Bot asks customer to re-explain their issue after it was already discussed in detail
+
+MODERATE CONTEXT LOSS (Medium Severity):
+- Bot forgets specific details mentioned earlier but maintains general conversation flow
+- Bot references wrong information from earlier in the conversation
+- Bot shows inconsistent knowledge of customer's situation
+- Conversation flow feels disjointed or disconnected from previous exchanges
+
+Signals of Context Loss:
+1. Greeting phrases appearing mid-call: "Hello", "Welcome to", "How can I help you today?"
+2. Re-asking for information already provided: account number, name, issue description
+3. Restarting verification or identification steps
+4. Customer confusion: "We were just talking about...", "I already told you..."
+5. Abrupt topic change that ignores previous context
+6. Bot responses that don't relate to immediately preceding customer messages
+
+WHAT IS NOT A CONTEXT LOSS (Don't Flag):
+- Bot asking follow-up clarifying questions
+- Bot confirming information for security/accuracy
+- Bot naturally transitioning to next phase of conversation
+- Bot summarizing previous discussion (this shows good context retention)
+
+For each restart/reset issue found:
+- Identify the exact line where context was lost or restart occurred
+- Quote the bot message that indicates restart (e.g., re-greeting, re-asking)
+- Reference what context should have been maintained
+- Explain the impact on customer experience
+- Note customer's reaction if they pointed it out
+
+Example: "At line 15, bot suddenly says 'Hello! Welcome to TechSupport. How can I assist you today?' This is a full restart mid-call - customer had already explained their payment issue at line 2, provided account number at line 10, and the conversation was well underway. Customer rightfully questions this at line 16: 'What? We were already talking! Why are you greeting me again?' This represents a critical failure in context maintenance."`,
   },
   {
     id: 'general_quality',
@@ -190,8 +532,248 @@ export const defaultChecks: CheckConfig[] = [
     description: 'Analyzes transcript for general quality issues and suggests improvements. No reference script or knowledge base applied.',
     enabled: true,
     requiresReference: false,
-    instructions: 'Review the transcript for general quality issues: unclear responses, poor tone, missed opportunities to help, abrupt transitions, or unhelpful answers. Suggest improvements based solely on the conversation.',
-    defaultInstructions: 'Review the transcript for general quality issues: unclear responses, poor tone, missed opportunities to help, abrupt transitions, or unhelpful answers. Suggest improvements based solely on the conversation.',
+    instructions: `Analyze the overall conversation quality based solely on the transcript, regardless of any reference script. Evaluate multiple quality dimensions:
+
+1. EMPATHY & TONE (Critical for Customer Satisfaction)
+
+   Good Signs:
+   - Bot acknowledges customer frustration: "I understand this must be frustrating..."
+   - Uses warm, professional language
+   - Shows patience when customer is upset
+   - Validates customer concerns before jumping to solutions
+
+   Quality Issues to Flag:
+   - Robotic, cold, or impersonal responses
+   - Dismissive tone when customer expresses frustration
+   - Overly formal language that feels distant
+   - Lack of acknowledgment when customer is clearly upset
+   - Tone-deaf responses (e.g., cheerful when customer is angry)
+
+   Example Issue: "Customer expressed frustration multiple times ('This is ridiculous', 'Are you even listening?') but bot never acknowledged their emotional state or apologized for the poor experience."
+
+2. ACTIVE LISTENING & COMPREHENSION
+
+   Good Signs:
+   - Bot references specific details customer mentioned
+   - Bot asks relevant follow-up questions
+   - Bot summarizes customer's issue to confirm understanding
+   - Bot builds on previous exchanges naturally
+
+   Quality Issues to Flag:
+   - Bot ignores important information customer provides
+   - Bot asks questions that were already answered
+   - Bot provides irrelevant solutions that don't match the issue
+   - Bot fails to acknowledge customer's stated concerns
+   - Responses feel generic rather than tailored to this specific customer
+
+   Example Issue: "Customer stated 'I already tried that three times' (line 6) but bot completely ignored this and suggested the same solution again without acknowledgment."
+
+3. CLARITY & HELPFULNESS
+
+   Good Signs:
+   - Instructions are clear and step-by-step
+   - Bot explains technical terms when needed
+   - Bot checks if customer understood before moving on
+   - Solutions are relevant and actionable
+
+   Quality Issues to Flag:
+   - Vague or unclear instructions
+   - Technical jargon without explanation
+   - Assumed knowledge customer may not have
+   - Incomplete solutions or half-answers
+   - Bot moves on without confirming customer could follow steps
+
+   Example Issue: "Bot said 'Please restart your router' but didn't explain how to do this or how long to wait, leaving customer without clear guidance."
+
+4. PROBLEM RESOLUTION APPROACH
+
+   Good Signs:
+   - Systematic troubleshooting (not random guesses)
+   - Bot asks what was already tried before suggesting solutions
+   - Bot escalates appropriately when stuck
+   - Bot stays focused on resolving the actual issue
+
+   Quality Issues to Flag:
+   - Bot suggests random solutions without logical order
+   - Bot keeps trying same approach when it's clearly not working
+   - Bot never offers escalation even when customer is frustrated and nothing is working
+   - Bot ignores the actual problem and focuses on something else
+   - Bot gives up too easily or escalates too quickly without trying to help
+
+   Example Issue: "After three failed attempts to resolve the issue, bot never offered to escalate to a human agent despite customer expressing frustration."
+
+5. CONVERSATIONAL FLOW & TRANSITIONS
+
+   Good Signs:
+   - Smooth transitions between topics
+   - Natural conversation progression
+   - Clear signposting ("Now let's...", "Next, I'll...")
+   - Logical sequence of questions and actions
+
+   Quality Issues to Flag:
+   - Abrupt topic changes without explanation
+   - Disjointed conversation that jumps around
+   - Awkward or confusing transitions
+   - Missing connective phrases that guide the conversation
+
+   Example Issue: "Bot abruptly switched from troubleshooting to asking for account number without explaining why or transitioning smoothly (line 12)."
+
+6. MISSED OPPORTUNITIES
+
+   Quality Issues to Flag:
+   - Bot could have shown more empathy at key moments
+   - Bot could have proactively offered related help
+   - Bot could have educated customer about preventing similar issues
+   - Bot could have checked customer satisfaction before closing
+   - Bot could have offered alternative solutions when first approach failed
+
+   Example Issue: "Customer mentioned frustration with this being a recurring issue, but bot only addressed the immediate problem without offering to investigate why it keeps happening or how to prevent it."
+
+7. PROFESSIONALISM & ETIQUETTE
+
+   Quality Issues to Flag:
+   - Missing pleasantries (thank you, please)
+   - Interrupting customer's thought
+   - Not apologizing when bot made errors
+   - Ending call without proper closing
+   - Overly casual or too stiff language
+
+   Example Issue: "Bot never apologized for the confusion it caused with repetitive suggestions, showing lack of accountability."
+
+SEVERITY GUIDELINES:
+- Critical: Issues that would make most customers very upset or harm company reputation
+- High: Issues that significantly degrade customer experience or show poor service
+- Medium: Issues that could be improved but conversation is still functional
+- Low: Minor polish issues or small missed opportunities
+
+For each quality issue found:
+- Specify which quality dimension it affects
+- Quote relevant parts of the transcript
+- Explain the impact on customer experience
+- Suggest specific improvement (what bot should have said/done instead)
+
+Example: "EMPATHY ISSUE - Severity: High. Customer expressed significant frustration at lines 8 and 10 ('Are you even listening?', 'This bot is broken') but bot never acknowledged their emotional state or apologized for the poor experience. Bot should have said something like: 'I sincerely apologize for the frustration this is causing you. I can see you've been patient while we work through this. Let me try a different approach or transfer you to a specialist who can help.'"`,
+    defaultInstructions: `Analyze the overall conversation quality based solely on the transcript, regardless of any reference script. Evaluate multiple quality dimensions:
+
+1. EMPATHY & TONE (Critical for Customer Satisfaction)
+
+   Good Signs:
+   - Bot acknowledges customer frustration: "I understand this must be frustrating..."
+   - Uses warm, professional language
+   - Shows patience when customer is upset
+   - Validates customer concerns before jumping to solutions
+
+   Quality Issues to Flag:
+   - Robotic, cold, or impersonal responses
+   - Dismissive tone when customer expresses frustration
+   - Overly formal language that feels distant
+   - Lack of acknowledgment when customer is clearly upset
+   - Tone-deaf responses (e.g., cheerful when customer is angry)
+
+   Example Issue: "Customer expressed frustration multiple times ('This is ridiculous', 'Are you even listening?') but bot never acknowledged their emotional state or apologized for the poor experience."
+
+2. ACTIVE LISTENING & COMPREHENSION
+
+   Good Signs:
+   - Bot references specific details customer mentioned
+   - Bot asks relevant follow-up questions
+   - Bot summarizes customer's issue to confirm understanding
+   - Bot builds on previous exchanges naturally
+
+   Quality Issues to Flag:
+   - Bot ignores important information customer provides
+   - Bot asks questions that were already answered
+   - Bot provides irrelevant solutions that don't match the issue
+   - Bot fails to acknowledge customer's stated concerns
+   - Responses feel generic rather than tailored to this specific customer
+
+   Example Issue: "Customer stated 'I already tried that three times' (line 6) but bot completely ignored this and suggested the same solution again without acknowledgment."
+
+3. CLARITY & HELPFULNESS
+
+   Good Signs:
+   - Instructions are clear and step-by-step
+   - Bot explains technical terms when needed
+   - Bot checks if customer understood before moving on
+   - Solutions are relevant and actionable
+
+   Quality Issues to Flag:
+   - Vague or unclear instructions
+   - Technical jargon without explanation
+   - Assumed knowledge customer may not have
+   - Incomplete solutions or half-answers
+   - Bot moves on without confirming customer could follow steps
+
+   Example Issue: "Bot said 'Please restart your router' but didn't explain how to do this or how long to wait, leaving customer without clear guidance."
+
+4. PROBLEM RESOLUTION APPROACH
+
+   Good Signs:
+   - Systematic troubleshooting (not random guesses)
+   - Bot asks what was already tried before suggesting solutions
+   - Bot escalates appropriately when stuck
+   - Bot stays focused on resolving the actual issue
+
+   Quality Issues to Flag:
+   - Bot suggests random solutions without logical order
+   - Bot keeps trying same approach when it's clearly not working
+   - Bot never offers escalation even when customer is frustrated and nothing is working
+   - Bot ignores the actual problem and focuses on something else
+   - Bot gives up too easily or escalates too quickly without trying to help
+
+   Example Issue: "After three failed attempts to resolve the issue, bot never offered to escalate to a human agent despite customer expressing frustration."
+
+5. CONVERSATIONAL FLOW & TRANSITIONS
+
+   Good Signs:
+   - Smooth transitions between topics
+   - Natural conversation progression
+   - Clear signposting ("Now let's...", "Next, I'll...")
+   - Logical sequence of questions and actions
+
+   Quality Issues to Flag:
+   - Abrupt topic changes without explanation
+   - Disjointed conversation that jumps around
+   - Awkward or confusing transitions
+   - Missing connective phrases that guide the conversation
+
+   Example Issue: "Bot abruptly switched from troubleshooting to asking for account number without explaining why or transitioning smoothly (line 12)."
+
+6. MISSED OPPORTUNITIES
+
+   Quality Issues to Flag:
+   - Bot could have shown more empathy at key moments
+   - Bot could have proactively offered related help
+   - Bot could have educated customer about preventing similar issues
+   - Bot could have checked customer satisfaction before closing
+   - Bot could have offered alternative solutions when first approach failed
+
+   Example Issue: "Customer mentioned frustration with this being a recurring issue, but bot only addressed the immediate problem without offering to investigate why it keeps happening or how to prevent it."
+
+7. PROFESSIONALISM & ETIQUETTE
+
+   Quality Issues to Flag:
+   - Missing pleasantries (thank you, please)
+   - Interrupting customer's thought
+   - Not apologizing when bot made errors
+   - Ending call without proper closing
+   - Overly casual or too stiff language
+
+   Example Issue: "Bot never apologized for the confusion it caused with repetitive suggestions, showing lack of accountability."
+
+SEVERITY GUIDELINES:
+- Critical: Issues that would make most customers very upset or harm company reputation
+- High: Issues that significantly degrade customer experience or show poor service
+- Medium: Issues that could be improved but conversation is still functional
+- Low: Minor polish issues or small missed opportunities
+
+For each quality issue found:
+- Specify which quality dimension it affects
+- Quote relevant parts of the transcript
+- Explain the impact on customer experience
+- Suggest specific improvement (what bot should have said/done instead)
+
+Example: "EMPATHY ISSUE - Severity: High. Customer expressed significant frustration at lines 8 and 10 ('Are you even listening?', 'This bot is broken') but bot never acknowledged their emotional state or apologized for the poor experience. Bot should have said something like: 'I sincerely apologize for the frustration this is causing you. I can see you've been patient while we work through this. Let me try a different approach or transfer you to a specialist who can help.'"`,
   },
 ];
 
