@@ -106,120 +106,170 @@ export function AnalysisManager() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[var(--color-navy-900)]">
-      {/* Space-themed animated background */}
-      <div className="fixed inset-0 pointer-events-none">
-        {/* Stars */}
-        {[...Array(100)].map((_, i) => (
+    <div className="min-h-screen relative overflow-hidden bg-[var(--color-navy-900)] flex flex-col">
+      {/* AI/ML themed animated background */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {/* Neural network nodes */}
+        {[...Array(30)].map((_, i) => {
+          const x = Math.random() * 100;
+          const y = Math.random() * 100;
+          return (
+            <motion.div
+              key={`node-${i}`}
+              className="absolute w-2 h-2 bg-blue-400 rounded-full"
+              style={{
+                left: `${x}%`,
+                top: `${y}%`,
+                boxShadow: '0 0 10px rgba(96, 165, 250, 0.6)',
+              }}
+              animate={{
+                scale: [1, 1.5, 1],
+                opacity: [0.4, 0.8, 0.4],
+              }}
+              transition={{
+                duration: 3 + Math.random() * 2,
+                repeat: Infinity,
+                delay: Math.random() * 3,
+              }}
+            />
+          );
+        })}
+
+        {/* Connecting lines between nodes - neural network connections */}
+        <svg className="absolute inset-0 w-full h-full">
+          {[...Array(20)].map((_, i) => {
+            const x1 = Math.random() * 100;
+            const y1 = Math.random() * 100;
+            const x2 = Math.random() * 100;
+            const y2 = Math.random() * 100;
+            return (
+              <motion.line
+                key={`line-${i}`}
+                x1={`${x1}%`}
+                y1={`${y1}%`}
+                x2={`${x2}%`}
+                y2={`${y2}%`}
+                stroke="rgba(96, 165, 250, 0.2)"
+                strokeWidth="1"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{
+                  pathLength: [0, 1, 0],
+                  opacity: [0, 0.4, 0],
+                }}
+                transition={{
+                  duration: 4 + Math.random() * 2,
+                  repeat: Infinity,
+                  delay: Math.random() * 4,
+                  ease: 'linear',
+                }}
+              />
+            );
+          })}
+        </svg>
+
+        {/* Data flow particles */}
+        {[...Array(15)].map((_, i) => (
           <motion.div
-            key={`star-${i}`}
-            className="absolute w-1 h-1 bg-white rounded-full"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+            key={`particle-${i}`}
+            className="absolute w-1 h-1 bg-cyan-400 rounded-full"
+            initial={{
+              x: `${Math.random() * 100}%`,
+              y: `${Math.random() * 100}%`,
             }}
             animate={{
-              opacity: [0.2, 1, 0.2],
-              scale: [0.5, 1, 0.5],
+              x: `${Math.random() * 100}%`,
+              y: `${Math.random() * 100}%`,
             }}
             transition={{
-              duration: 2 + Math.random() * 3,
+              duration: 10 + Math.random() * 5,
               repeat: Infinity,
-              delay: Math.random() * 5,
+              ease: 'linear',
+            }}
+            style={{
+              boxShadow: '0 0 8px rgba(34, 211, 238, 0.8)',
             }}
           />
         ))}
 
-        {/* Comets */}
-        {[...Array(3)].map((_, i) => (
+        {/* Circuit board lines */}
+        {[...Array(8)].map((_, i) => (
           <motion.div
-            key={`comet-${i}`}
-            className="absolute"
-            initial={{
-              x: -100,
-              y: Math.random() * 100,
+            key={`circuit-${i}`}
+            className="absolute h-px bg-gradient-to-r from-transparent via-green-400 to-transparent opacity-20"
+            style={{
+              width: '100%',
+              top: `${10 + i * 12}%`,
             }}
             animate={{
-              x: ['0%', '120%'],
-              y: [
-                `${Math.random() * 100}%`,
-                `${Math.random() * 100}%`,
-              ],
+              x: ['-100%', '100%'],
             }}
             transition={{
-              duration: 15 + Math.random() * 10,
+              duration: 8 + Math.random() * 4,
               repeat: Infinity,
-              delay: i * 8,
               ease: 'linear',
+              delay: i * 0.5,
             }}
-          >
-            <div className="relative">
-              <div className="w-2 h-2 bg-blue-400 rounded-full shadow-[0_0_10px_2px_rgba(96,165,250,0.8)]" />
-              <motion.div
-                className="absolute top-0 left-0 w-32 h-px bg-gradient-to-r from-blue-400 to-transparent"
-                style={{ transformOrigin: 'left center' }}
-              />
-            </div>
-          </motion.div>
+          />
         ))}
 
-        {/* Planets/Nebula effects */}
+        {/* Pulsing gradient orbs - representing AI processing */}
         <motion.div
-          className="absolute top-20 left-10 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"
+          className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%)',
+          }}
           animate={{
             scale: [1, 1.3, 1],
-            opacity: [0.2, 0.4, 0.2],
-            x: [0, 30, 0],
-            y: [0, -20, 0],
+            opacity: [0.3, 0.6, 0.3],
           }}
-          transition={{ duration: 20, repeat: Infinity }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
         />
         <motion.div
-          className="absolute top-1/3 right-20 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl"
+          className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(34, 211, 238, 0.1) 0%, transparent 70%)',
+          }}
           animate={{
             scale: [1.2, 1, 1.2],
-            opacity: [0.2, 0.4, 0.2],
-            x: [0, -30, 0],
-            y: [0, 20, 0],
+            opacity: [0.3, 0.6, 0.3],
           }}
-          transition={{ duration: 25, repeat: Infinity }}
-        />
-        <motion.div
-          className="absolute bottom-20 left-1/3 w-72 h-72 bg-pink-500/5 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.4, 1],
-            opacity: [0.15, 0.35, 0.15],
-            x: [0, 20, 0],
-            y: [0, -30, 0],
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: 'easeInOut',
+            delay: 2,
           }}
-          transition={{ duration: 30, repeat: Infinity }}
         />
 
-        {/* Meteor shower */}
-        {[...Array(5)].map((_, i) => (
+        {/* Binary code rain effect */}
+        {[...Array(10)].map((_, i) => (
           <motion.div
-            key={`meteor-${i}`}
-            className="absolute w-px h-20 bg-gradient-to-b from-white to-transparent opacity-70"
-            initial={{
-              x: `${Math.random() * 100}%`,
-              y: -100,
-              rotate: 45,
+            key={`binary-${i}`}
+            className="absolute text-green-400 opacity-20 font-mono text-xs"
+            style={{
+              left: `${i * 10 + 5}%`,
             }}
+            initial={{ y: -20 }}
             animate={{
-              x: `${Math.random() * 100}%`,
               y: '120vh',
             }}
             transition={{
-              duration: 2 + Math.random() * 2,
+              duration: 15 + Math.random() * 5,
               repeat: Infinity,
-              delay: i * 4 + Math.random() * 10,
               ease: 'linear',
+              delay: i * 2,
             }}
-          />
+          >
+            {Array.from({ length: 20 }, () => Math.random() > 0.5 ? '1' : '0').join('\n')}
+          </motion.div>
         ))}
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 py-12 max-w-6xl">
+      <div className="relative z-10 container mx-auto px-4 py-12 max-w-6xl flex-1">
         {/* Header */}
         <motion.div
           className="text-center mb-12"
@@ -228,7 +278,7 @@ export function AnalysisManager() {
           transition={{ duration: 0.6 }}
         >
           <h1 className="text-6xl font-bold text-white mb-2 tracking-tight">
-            AI Agent Control Line
+            AI Agent Control Center
           </h1>
         </motion.div>
 
@@ -454,6 +504,13 @@ export function AnalysisManager() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Footer */}
+      <footer className="relative z-10 mt-auto py-6 text-center">
+        <p className="text-[var(--color-slate-400)] text-sm">
+          Built by <span className="text-white font-semibold">Convin</span>
+        </p>
+      </footer>
     </div>
   );
 }

@@ -303,7 +303,7 @@ export function FixesPanel() {
               <div>
                 <h3 className="text-lg font-semibold text-white">Final Updated Script</h3>
                 <p className="text-xs text-[var(--color-slate-400)] mt-1">
-                  New additions are highlighted in green. Copy button copies clean text without highlights.
+                  New additions are marked with green bar on the left. Copy button copies clean text.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -333,22 +333,13 @@ export function FixesPanel() {
                     initial={{ opacity: 0, x: section.isNew ? 10 : 0 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className={`relative ${
+                    className={`${
                       section.isNew
-                        ? 'bg-green-500/10 border-l-4 border-green-500 pl-4 py-3 my-2'
+                        ? 'border-l-4 border-green-500 pl-4 py-2'
                         : ''
                     }`}
                   >
-                    {section.isNew && section.reasoning && (
-                      <div className="absolute -top-6 left-0 text-xs text-green-400 italic">
-                        → {section.reasoning}
-                      </div>
-                    )}
-                    <pre className={`text-sm whitespace-pre-wrap font-mono ${
-                      section.isNew
-                        ? 'text-green-100'
-                        : 'text-[var(--color-slate-200)]'
-                    }`}>
+                    <pre className="text-sm whitespace-pre-wrap font-mono text-[var(--color-slate-200)]">
 {section.text}
                     </pre>
                   </motion.div>

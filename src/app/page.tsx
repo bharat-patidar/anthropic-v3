@@ -70,25 +70,50 @@ function RunningPage() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      {/* Floating particles effect */}
+      {/* AI/ML themed floating particles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(20)].map((_, i) => (
+        {/* Neural network nodes */}
+        {[...Array(15)].map((_, i) => (
           <motion.div
-            key={i}
-            className="absolute w-2 h-2 bg-blue-400/30 rounded-full"
+            key={`node-${i}`}
+            className="absolute w-2 h-2 bg-blue-400 rounded-full"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              boxShadow: '0 0 10px rgba(96, 165, 250, 0.6)',
+            }}
             animate={{
-              x: [0, Math.random() * 100 - 50],
-              y: [0, -100],
+              scale: [1, 1.5, 1],
+              opacity: [0.3, 0.8, 0.3],
+            }}
+            transition={{
+              duration: 2 + Math.random() * 2,
+              repeat: Infinity,
+              delay: Math.random() * 2,
+            }}
+          />
+        ))}
+
+        {/* Data packets flowing */}
+        {[...Array(8)].map((_, i) => (
+          <motion.div
+            key={`packet-${i}`}
+            className="absolute w-3 h-3 border-2 border-cyan-400 rounded"
+            animate={{
+              x: [0, Math.random() * 200 - 100],
+              y: [0, Math.random() * 200 - 100],
               opacity: [0, 1, 0],
             }}
             transition={{
               duration: 3 + Math.random() * 2,
               repeat: Infinity,
-              delay: Math.random() * 2,
+              delay: Math.random() * 3,
+              ease: 'linear',
             }}
             style={{
               left: `${Math.random() * 100}%`,
-              top: '50%',
+              top: `${Math.random() * 100}%`,
+              boxShadow: '0 0 8px rgba(34, 211, 238, 0.6)',
             }}
           />
         ))}
@@ -100,29 +125,64 @@ function RunningPage() {
         animate={{ scale: 1, y: 0 }}
         transition={{ type: 'spring', damping: 15 }}
       >
-        <motion.div
-          className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-6"
-          animate={{
-            scale: [1, 1.1, 1],
-            rotate: [0, 180, 360],
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        >
-          <Sparkles className="w-10 h-10 text-white" />
-        </motion.div>
+        {/* AI Brain / Neural Network Icon */}
+        <div className="relative w-20 h-20 mx-auto mb-6">
+          {/* Center core */}
+          <motion.div
+            className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center"
+            animate={{
+              scale: [1, 1.2, 1],
+              rotate: [0, 360],
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          >
+            <Sparkles className="w-10 h-10 text-white" />
+          </motion.div>
+
+          {/* Orbiting nodes */}
+          {[0, 120, 240].map((angle, i) => (
+            <motion.div
+              key={`orbit-${i}`}
+              className="absolute w-3 h-3 bg-cyan-400 rounded-full"
+              style={{
+                left: '50%',
+                top: '50%',
+                marginLeft: '-6px',
+                marginTop: '-6px',
+                boxShadow: '0 0 10px rgba(34, 211, 238, 0.8)',
+              }}
+              animate={{
+                x: [
+                  Math.cos((angle * Math.PI) / 180) * 35,
+                  Math.cos(((angle + 360) * Math.PI) / 180) * 35,
+                ],
+                y: [
+                  Math.sin((angle * Math.PI) / 180) * 35,
+                  Math.sin(((angle + 360) * Math.PI) / 180) * 35,
+                ],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: 'linear',
+              }}
+            />
+          ))}
+        </div>
+
         <motion.h2
           className="text-2xl font-bold text-white mb-2"
           animate={{ opacity: [1, 0.7, 1] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          Analyzing Calls...
+          AI Processing...
         </motion.h2>
         <p className="text-[var(--color-slate-400)] mb-6">
-          Running all enabled checks on your transcripts
+          Analyzing transcripts with machine learning models
         </p>
         <div className="progress-bar mb-2">
           <motion.div
@@ -130,6 +190,10 @@ function RunningPage() {
             initial={{ width: 0 }}
             animate={{ width: `${runProgress}%` }}
             transition={{ duration: 0.5 }}
+            style={{
+              background: 'linear-gradient(90deg, #3b82f6, #22d3ee, #3b82f6)',
+              backgroundSize: '200% 100%',
+            }}
           />
         </div>
         <motion.span
