@@ -14,6 +14,8 @@ import {
   Edit2,
   Check,
   X,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { CheckType } from '@/types';
@@ -211,12 +213,22 @@ export function ChecksConfig() {
     toggleCheck,
     updateCheckInstructions,
     updateCheckName,
+    addCustomCheck,
+    deleteCustomCheck,
     resetCheckInstructions,
   } = useAppStore();
   const [isExpanded, setIsExpanded] = useState(true);
   const [expandedCheck, setExpandedCheck] = useState<CheckType | null>(null);
   const [editingCheckId, setEditingCheckId] = useState<CheckType | null>(null);
   const [editedName, setEditedName] = useState('');
+  const [showAddCheckDialog, setShowAddCheckDialog] = useState(false);
+  const [newCheck, setNewCheck] = useState({
+    name: '',
+    description: '',
+    instructions: '',
+    requiresReference: false,
+    icon: '✨',
+  });
 
   const enabledCount = checks.filter((c) => c.enabled).length;
 
@@ -236,6 +248,36 @@ export function ChecksConfig() {
   const cancelEditingName = () => {
     setEditingCheckId(null);
     setEditedName('');
+  };
+
+  const handleAddCheck = () => {
+    if (!newCheck.name.trim() || !newCheck.instructions.trim()) {
+      alert('Please fill in check name and instructions');
+      return;
+    }
+
+    const id = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const checkConfig = {
+      id: id as CheckType,
+      name: newCheck.name.trim(),
+      description: newCheck.description.trim() || 'Custom check',
+      enabled: true,
+      requiresReference: newCheck.requiresReference,
+      instructions: newCheck.instructions.trim(),
+      defaultInstructions: newCheck.instructions.trim(),
+      custom: true,
+      icon: newCheck.icon,
+    };
+
+    addCustomCheck(checkConfig);
+    setShowAddCheckDialog(false);
+    setNewCheck({
+      name: '',
+      description: '',
+      instructions: '',
+      requiresReference: false,
+      icon: '✨',
+    });
   };
 
   return (
@@ -291,7 +333,7 @@ export function ChecksConfig() {
                 {/* Check Header */}
                 <div className="flex items-center justify-between p-4 group">
                   <div className="flex items-center gap-3 flex-1">
-                    <span className="text-xl">{checkIcons[check.id]}</span>
+                    <span className="text-xl">{check.custom && check.icon ? check.icon : checkIcons[check.id as keyof typeof checkIcons]}</span>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         {editingCheckId === check.id ? (
@@ -348,6 +390,21 @@ export function ChecksConfig() {
                   </div>
 
                   <div className="flex items-center gap-3">
+                    {/* Delete Button (Custom Checks Only) */}
+                    {check.custom && (
+                      <button
+                        className="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
+                        onClick={() => {
+                          if (confirm(`Delete custom check "${check.name}"?`)) {
+                            deleteCustomCheck(check.id);
+                          }
+                        }}
+                        title="Delete custom check"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    )}
+
                     {/* Expand/Collapse Instructions */}
                     <button
                       className="p-2 hover:bg-[var(--color-navy-700)] rounded-lg transition-colors"
@@ -425,7 +482,122 @@ export function ChecksConfig() {
               </motion.div>
             );
           })}
+
+          {/* Add Custom Check Button */}
+          <button
+            className="w-full btn-secondary flex items-center justify-center gap-2 py-3"
+            onClick={() => setShowAddCheckDialog(true)}
+          >
+            <Plus className="w-4 h-4" />
+            Add Custom Check
+          </button>
         </motion.div>
+      )}
+
+      {/* Add Check Dialog */}
+      {showAddCheckDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+          <motion.div
+            className="glass-card max-w-lg w-full"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <div className="p-4 border-b border-[var(--color-navy-700)]">
+              <h3 className="text-lg font-semibold text-white">Add Custom Check</h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="text-sm text-[var(--color-slate-300)] block mb-2">
+                  Check Name *
+                </label>
+                <input
+                  type="text"
+                  value={newCheck.name}
+                  onChange={(e) => setNewCheck({ ...newCheck, name: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="e.g., Tone Check"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-[var(--color-slate-300)] block mb-2">
+                  Icon (Emoji)
+                </label>
+                <input
+                  type="text"
+                  value={newCheck.icon}
+                  onChange={(e) => setNewCheck({ ...newCheck, icon: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="✨"
+                  maxLength={2}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-[var(--color-slate-300)] block mb-2">
+                  Description
+                </label>
+                <input
+                  type="text"
+                  value={newCheck.description}
+                  onChange={(e) => setNewCheck({ ...newCheck, description: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="e.g., Check for appropriate tone and professionalism"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-[var(--color-slate-300)] block mb-2">
+                  Check Instructions *
+                </label>
+                <textarea
+                  value={newCheck.instructions}
+                  onChange={(e) => setNewCheck({ ...newCheck, instructions: e.target.value })}
+                  className="textarea-field w-full"
+                  rows={4}
+                  placeholder="Describe what this check should look for in the transcript..."
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="requiresReference"
+                  checked={newCheck.requiresReference}
+                  onChange={(e) => setNewCheck({ ...newCheck, requiresReference: e.target.checked })}
+                  className="w-4 h-4 rounded border-2 border-[var(--color-navy-600)] bg-[var(--color-navy-800)] checked:bg-blue-500 checked:border-blue-500"
+                />
+                <label htmlFor="requiresReference" className="text-sm text-[var(--color-slate-300)]">
+                  Requires Reference Script
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  className="btn-primary flex-1"
+                  onClick={handleAddCheck}
+                >
+                  Add Check
+                </button>
+                <button
+                  className="btn-secondary flex-1"
+                  onClick={() => {
+                    setShowAddCheckDialog(false);
+                    setNewCheck({
+                      name: '',
+                      description: '',
+                      instructions: '',
+                      requiresReference: false,
+                      icon: '✨',
+                    });
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       )}
     </motion.div>
   );

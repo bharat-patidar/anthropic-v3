@@ -97,6 +97,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
+  addCustomCheck: (check: CheckConfig) => {
+    const { checks } = get();
+    set({ checks: [...checks, { ...check, custom: true }] });
+  },
+
+  deleteCustomCheck: (checkId: CheckType) => {
+    const { checks } = get();
+    const check = checks.find(c => c.id === checkId);
+    if (check && check.custom) {
+      set({ checks: checks.filter(c => c.id !== checkId) });
+    }
+  },
+
   resetCheckInstructions: (checkId: CheckType) => {
     const { checks } = get();
     set({

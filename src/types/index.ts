@@ -3,7 +3,8 @@ export type CheckType =
   | 'repetition'
   | 'language_alignment'
   | 'restart_reset'
-  | 'general_quality';
+  | 'general_quality'
+  | string; // Allow custom check IDs
 
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
 
@@ -51,6 +52,8 @@ export interface CheckConfig {
   requiresReference: boolean;
   instructions: string;
   defaultInstructions: string;
+  custom?: boolean; // Mark custom checks
+  icon?: string; // Custom icon for custom checks
 }
 
 export interface AnalysisResult {
@@ -114,6 +117,8 @@ export interface AppState {
   toggleCheck: (checkId: CheckType) => void;
   updateCheckInstructions: (checkId: CheckType, instructions: string) => void;
   updateCheckName: (checkId: CheckType, name: string) => void;
+  addCustomCheck: (check: CheckConfig) => void;
+  deleteCustomCheck: (checkId: CheckType) => void;
   resetCheckInstructions: (checkId: CheckType) => void;
   resetAllToDefaults: () => void;
   runAnalysis: () => Promise<void>;
