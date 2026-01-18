@@ -8,6 +8,7 @@ import { useAppStore } from '@/store/useAppStore';
 const OPENAI_MODELS = [
   { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini (Recommended)', description: 'Fast and cost-effective' },
   { value: 'gpt-5.2', label: 'GPT-5.2', description: 'Most advanced model' },
+  { value: 'gpt-5.1', label: 'GPT-5.1', description: 'Enhanced capabilities' },
   { value: 'gpt-5', label: 'GPT-5', description: 'Advanced capabilities' },
   { value: 'gpt-5-mini', label: 'GPT-5 Mini', description: 'Balanced performance' },
   { value: 'gpt-4.1', label: 'GPT-4.1', description: 'Previous generation flagship' },

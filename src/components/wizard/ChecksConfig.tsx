@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings,
@@ -9,9 +9,17 @@ import {
   RotateCcw,
   AlertCircle,
   Lock,
+  Save,
+  Star,
+  Edit2,
+  Check,
+  X,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { CheckType } from '@/types';
+import { useSaveLoadTemplates } from '@/hooks/useSaveLoadTemplates';
 
 const checkIcons: Record<CheckType, string> = {
   flow_compliance: '📋',
@@ -21,18 +29,256 @@ const checkIcons: Record<CheckType, string> = {
   general_quality: '✨',
 };
 
+// Helper component for individual check save/load
+function CheckInstructionsSaveLoad({
+  checkId,
+  instructions,
+  onLoad,
+}: {
+  checkId: CheckType;
+  instructions: string;
+  onLoad: (content: string) => void;
+}) {
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [currentTemplateName, setCurrentTemplateName] = useState<string | null>(null);
+  const { templates, saveTemplate, loadTemplate, setDefaultTemplate, getDefaultTemplate, isLoading } = useSaveLoadTemplates(
+    `templates_check_${checkId}`
+  );
+
+  // Auto-load default template on mount (only once)
+  const hasAutoLoaded = useRef(false);
+  useEffect(() => {
+    if (!isLoading && templates.length > 0 && !hasAutoLoaded.current) {
+      const defaultTemplate = getDefaultTemplate();
+      if (defaultTemplate) {
+        onLoad(defaultTemplate.content);
+        setCurrentTemplateName(defaultTemplate.name);
+        hasAutoLoaded.current = true;
+      }
+    }
+  }, [isLoading, templates, getDefaultTemplate, onLoad]);
+
+  // Close template menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showTemplateMenu && !target.closest('.template-menu-container')) {
+        setShowTemplateMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showTemplateMenu]);
+
+  const handleSave = async () => {
+    if (!templateName.trim()) {
+      alert('Please enter a template name');
+      return;
+    }
+    try {
+      await saveTemplate(templateName.trim(), instructions);
+      setTemplateName('');
+      setShowSaveDialog(false);
+    } catch (error) {
+      console.error('Error saving template:', error);
+      alert('Failed to save template. Please try again.');
+    }
+  };
+
+  const handleLoad = (templateId: string) => {
+    if (!templateId) return;
+    const template = templates.find(t => t.id === templateId);
+    const content = loadTemplate(templateId);
+    if (content && template) {
+      onLoad(content);
+      setCurrentTemplateName(template.name);
+    }
+  };
+
+  const handleSetDefault = async (templateId: string) => {
+    try {
+      await setDefaultTemplate(templateId);
+    } catch (error) {
+      console.error('Error setting default template:', error);
+      alert('Failed to set default template. Please try again.');
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Save/Load Controls */}
+      <div className="flex items-center gap-2">
+        {/* Load Template Dropdown */}
+        <div className="flex-1 relative template-menu-container">
+          <button
+            onClick={() => setShowTemplateMenu(!showTemplateMenu)}
+            className="w-full px-2 py-1.5 bg-[var(--color-navy-800)] border border-[var(--color-navy-700)] rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-left flex items-center justify-between"
+          >
+            <span className={currentTemplateName ? 'text-white' : 'text-[var(--color-slate-400)]'}>
+              {currentTemplateName || 'Load saved template...'}
+            </span>
+            <ChevronDown className="w-3 h-3" />
+          </button>
+
+          {/* Custom Template Menu */}
+          {showTemplateMenu && templates.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--color-navy-800)] border border-[var(--color-navy-700)] rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+              {templates.map((template) => (
+                <div
+                  key={template.id}
+                  className="flex items-center justify-between px-3 py-2 hover:bg-[var(--color-navy-700)] cursor-pointer group"
+                >
+                  <span
+                    className="flex-1 text-xs text-white"
+                    onClick={() => {
+                      handleLoad(template.id);
+                      setShowTemplateMenu(false);
+                    }}
+                  >
+                    {template.name}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSetDefault(template.id);
+                    }}
+                    className="ml-2 p-1 hover:bg-[var(--color-navy-600)] rounded"
+                    title={template.isDefault ? "Default template" : "Set as default"}
+                  >
+                    <Star
+                      className={`w-3 h-3 ${
+                        template.isDefault
+                          ? 'fill-yellow-400 text-yellow-400'
+                          : 'text-gray-400 group-hover:text-yellow-400'
+                      }`}
+                    />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Save Button */}
+        <button
+          onClick={() => setShowSaveDialog(!showSaveDialog)}
+          className="btn-primary flex items-center gap-1 text-xs py-1.5 px-3 whitespace-nowrap"
+        >
+          <Save className="w-3 h-3" />
+          Save
+        </button>
+      </div>
+
+      {/* Save Dialog */}
+      {showSaveDialog && (
+        <div className="glass-card-subtle p-2 space-y-2">
+          <label className="text-xs text-[var(--color-slate-300)]">
+            Template Name
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="flex-1 px-2 py-1.5 bg-[var(--color-navy-800)] border border-[var(--color-navy-700)] rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="e.g., Strict Flow Check"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+            />
+            <button onClick={handleSave} className="btn-primary text-xs py-1.5 px-3">
+              Save
+            </button>
+            <button
+              onClick={() => {
+                setShowSaveDialog(false);
+                setTemplateName('');
+              }}
+              className="btn-secondary text-xs py-1.5 px-3"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ChecksConfig() {
   const {
     checks,
     referenceEnabled,
     toggleCheck,
     updateCheckInstructions,
+    updateCheckName,
+    addCustomCheck,
+    deleteCustomCheck,
     resetCheckInstructions,
   } = useAppStore();
   const [isExpanded, setIsExpanded] = useState(true);
   const [expandedCheck, setExpandedCheck] = useState<CheckType | null>(null);
+  const [editingCheckId, setEditingCheckId] = useState<CheckType | null>(null);
+  const [editedName, setEditedName] = useState('');
+  const [showAddCheckDialog, setShowAddCheckDialog] = useState(false);
+  const [newCheck, setNewCheck] = useState({
+    name: '',
+    description: '',
+    instructions: '',
+    requiresReference: false,
+    icon: '✨',
+  });
 
   const enabledCount = checks.filter((c) => c.enabled).length;
+
+  const startEditingName = (checkId: CheckType, currentName: string) => {
+    setEditingCheckId(checkId);
+    setEditedName(currentName);
+  };
+
+  const saveEditedName = (checkId: CheckType) => {
+    if (editedName.trim()) {
+      updateCheckName(checkId, editedName.trim());
+    }
+    setEditingCheckId(null);
+    setEditedName('');
+  };
+
+  const cancelEditingName = () => {
+    setEditingCheckId(null);
+    setEditedName('');
+  };
+
+  const handleAddCheck = () => {
+    if (!newCheck.name.trim() || !newCheck.instructions.trim()) {
+      alert('Please fill in check name and instructions');
+      return;
+    }
+
+    const id = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const checkConfig = {
+      id: id as CheckType,
+      name: newCheck.name.trim(),
+      description: newCheck.description.trim() || 'Custom check',
+      enabled: true,
+      requiresReference: newCheck.requiresReference,
+      instructions: newCheck.instructions.trim(),
+      defaultInstructions: newCheck.instructions.trim(),
+      custom: true,
+      icon: newCheck.icon,
+    };
+
+    addCustomCheck(checkConfig);
+    setShowAddCheckDialog(false);
+    setNewCheck({
+      name: '',
+      description: '',
+      instructions: '',
+      requiresReference: false,
+      icon: '✨',
+    });
+  };
 
   return (
     <motion.div
@@ -85,14 +331,51 @@ export function ChecksConfig() {
                 layout
               >
                 {/* Check Header */}
-                <div className="flex items-center justify-between p-4">
+                <div className="flex items-center justify-between p-4 group">
                   <div className="flex items-center gap-3 flex-1">
-                    <span className="text-xl">{checkIcons[check.id]}</span>
+                    <span className="text-xl">{check.custom && check.icon ? check.icon : checkIcons[check.id as keyof typeof checkIcons]}</span>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <h4 className="font-medium text-white text-sm">
-                          {check.name}
-                        </h4>
+                        {editingCheckId === check.id ? (
+                          <div className="flex items-center gap-2 flex-1">
+                            <input
+                              type="text"
+                              value={editedName}
+                              onChange={(e) => setEditedName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveEditedName(check.id);
+                                if (e.key === 'Escape') cancelEditingName();
+                              }}
+                              className="flex-1 px-2 py-1 bg-[var(--color-navy-800)] border border-[var(--color-navy-700)] rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => saveEditedName(check.id)}
+                              className="p-1 hover:bg-[var(--color-navy-700)] rounded"
+                            >
+                              <Check className="w-4 h-4 text-green-400" />
+                            </button>
+                            <button
+                              onClick={cancelEditingName}
+                              className="p-1 hover:bg-[var(--color-navy-700)] rounded"
+                            >
+                              <X className="w-4 h-4 text-red-400" />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <h4 className="font-medium text-white text-sm">
+                              {check.name}
+                            </h4>
+                            <button
+                              onClick={() => startEditingName(check.id, check.name)}
+                              className="p-1 hover:bg-[var(--color-navy-700)] rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Edit check name"
+                            >
+                              <Edit2 className="w-3 h-3 text-[var(--color-slate-400)]" />
+                            </button>
+                          </>
+                        )}
                         {isLocked && (
                           <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 rounded text-xs text-amber-400">
                             <Lock className="w-3 h-3" />
@@ -107,6 +390,21 @@ export function ChecksConfig() {
                   </div>
 
                   <div className="flex items-center gap-3">
+                    {/* Delete Button (Custom Checks Only) */}
+                    {check.custom && (
+                      <button
+                        className="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
+                        onClick={() => {
+                          if (confirm(`Delete custom check "${check.name}"?`)) {
+                            deleteCustomCheck(check.id);
+                          }
+                        }}
+                        title="Delete custom check"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    )}
+
                     {/* Expand/Collapse Instructions */}
                     <button
                       className="p-2 hover:bg-[var(--color-navy-700)] rounded-lg transition-colors"
@@ -151,9 +449,19 @@ export function ChecksConfig() {
                           className="flex items-center gap-1 text-xs text-[var(--color-slate-400)] hover:text-white transition-colors"
                         >
                           <RotateCcw className="w-3 h-3" />
-                          Reset
+                          Reset to Default
                         </button>
                       </div>
+
+                      {/* Save/Load Controls */}
+                      <CheckInstructionsSaveLoad
+                        checkId={check.id}
+                        instructions={check.instructions}
+                        onLoad={(content) =>
+                          updateCheckInstructions(check.id, content)
+                        }
+                      />
+
                       <textarea
                         className="textarea-field text-sm"
                         value={check.instructions}
@@ -174,7 +482,122 @@ export function ChecksConfig() {
               </motion.div>
             );
           })}
+
+          {/* Add Custom Check Button */}
+          <button
+            className="w-full btn-secondary flex items-center justify-center gap-2 py-3"
+            onClick={() => setShowAddCheckDialog(true)}
+          >
+            <Plus className="w-4 h-4" />
+            Add Custom Check
+          </button>
         </motion.div>
+      )}
+
+      {/* Add Check Dialog */}
+      {showAddCheckDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+          <motion.div
+            className="glass-card max-w-lg w-full"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <div className="p-4 border-b border-[var(--color-navy-700)]">
+              <h3 className="text-lg font-semibold text-white">Add Custom Check</h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="text-sm text-[var(--color-slate-300)] block mb-2">
+                  Check Name *
+                </label>
+                <input
+                  type="text"
+                  value={newCheck.name}
+                  onChange={(e) => setNewCheck({ ...newCheck, name: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="e.g., Tone Check"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-[var(--color-slate-300)] block mb-2">
+                  Icon (Emoji)
+                </label>
+                <input
+                  type="text"
+                  value={newCheck.icon}
+                  onChange={(e) => setNewCheck({ ...newCheck, icon: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="✨"
+                  maxLength={2}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-[var(--color-slate-300)] block mb-2">
+                  Description
+                </label>
+                <input
+                  type="text"
+                  value={newCheck.description}
+                  onChange={(e) => setNewCheck({ ...newCheck, description: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="e.g., Check for appropriate tone and professionalism"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-[var(--color-slate-300)] block mb-2">
+                  Check Instructions *
+                </label>
+                <textarea
+                  value={newCheck.instructions}
+                  onChange={(e) => setNewCheck({ ...newCheck, instructions: e.target.value })}
+                  className="textarea-field w-full"
+                  rows={4}
+                  placeholder="Describe what this check should look for in the transcript..."
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="requiresReference"
+                  checked={newCheck.requiresReference}
+                  onChange={(e) => setNewCheck({ ...newCheck, requiresReference: e.target.checked })}
+                  className="w-4 h-4 rounded border-2 border-[var(--color-navy-600)] bg-[var(--color-navy-800)] checked:bg-blue-500 checked:border-blue-500"
+                />
+                <label htmlFor="requiresReference" className="text-sm text-[var(--color-slate-300)]">
+                  Requires Reference Script
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  className="btn-primary flex-1"
+                  onClick={handleAddCheck}
+                >
+                  Add Check
+                </button>
+                <button
+                  className="btn-secondary flex-1"
+                  onClick={() => {
+                    setShowAddCheckDialog(false);
+                    setNewCheck({
+                      name: '',
+                      description: '',
+                      instructions: '',
+                      requiresReference: false,
+                      icon: '✨',
+                    });
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       )}
     </motion.div>
   );

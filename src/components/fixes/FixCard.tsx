@@ -8,9 +8,11 @@ import { Fix } from '@/types';
 interface FixCardProps {
   fix: Fix;
   index: number;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }
 
-export function FixCard({ fix, index }: FixCardProps) {
+export function FixCard({ fix, index, isSelected = false, onToggleSelect }: FixCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -18,6 +20,11 @@ export function FixCard({ fix, index }: FixCardProps) {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
     setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const copyAll = () => {
+    // Only copy suggestion, not the example
+    copyToClipboard(fix.suggestion, 'all');
   };
 
   return (
@@ -33,6 +40,17 @@ export function FixCard({ fix, index }: FixCardProps) {
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3">
+          {onToggleSelect && (
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={(e) => {
+                e.stopPropagation();
+                onToggleSelect();
+              }}
+              className="w-5 h-5 rounded border-2 border-[var(--color-navy-600)] bg-[var(--color-navy-800)] checked:bg-blue-500 checked:border-blue-500 cursor-pointer"
+            />
+          )}
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
             {index + 1}
           </div>
@@ -58,6 +76,29 @@ export function FixCard({ fix, index }: FixCardProps) {
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
         >
+          {/* Copy All Button */}
+          <div className="flex justify-end">
+            <button
+              className="btn-primary flex items-center gap-2 text-xs py-1.5 px-3"
+              onClick={(e) => {
+                e.stopPropagation();
+                copyAll();
+              }}
+            >
+              {copiedField === 'all' ? (
+                <>
+                  <Check className="w-3 h-3" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3" />
+                  Copy All
+                </>
+              )}
+            </button>
+          </div>
+
           {/* Suggestion */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -66,10 +107,10 @@ export function FixCard({ fix, index }: FixCardProps) {
                 Suggested Fix
               </span>
             </div>
-            <div className="glass-card-subtle p-3 relative group">
-              <p className="text-sm text-[var(--color-slate-200)] pr-8">
+            <div className="glass-card-subtle p-3 relative group bg-[var(--color-navy-900)] border border-[var(--color-navy-700)]">
+              <pre className="text-sm text-[var(--color-slate-200)] pr-8 whitespace-pre-wrap font-mono">
                 {fix.suggestion}
-              </p>
+              </pre>
               <button
                 className="absolute top-2 right-2 p-1.5 hover:bg-[var(--color-navy-600)] rounded opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={(e) => {
@@ -109,10 +150,10 @@ export function FixCard({ fix, index }: FixCardProps) {
                 Example Response
               </span>
             </div>
-            <div className="glass-card-subtle p-3 relative group border-l-2 border-teal-500">
-              <p className="text-sm text-teal-300 italic pr-8">
+            <div className="glass-card-subtle p-3 relative group border-l-2 border-teal-500 bg-[var(--color-navy-900)]">
+              <pre className="text-sm text-teal-300 italic pr-8 whitespace-pre-wrap font-mono">
                 {fix.exampleResponse}
-              </p>
+              </pre>
               <button
                 className="absolute top-2 right-2 p-1.5 hover:bg-[var(--color-navy-600)] rounded opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={(e) => {

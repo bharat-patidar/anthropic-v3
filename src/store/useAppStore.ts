@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import {
   AppState,
   CheckType,
+  CheckConfig,
   Transcript,
   AnalysisResult,
   IssueType,
@@ -16,6 +17,8 @@ import {
   defaultReferenceScript,
 } from '@/data/demoData';
 import { analyzeTranscript, generateFixSuggestions } from '@/services/openai';
+
+const STORAGE_KEY = 'voicebot-qa-storage-v1';
 
 const initialState = {
   transcripts: [demoTranscript],
@@ -30,10 +33,12 @@ const initialState = {
   },
   isRunning: false,
   runProgress: 0,
-  currentStep: 'input' as const,
+  currentStep: 'analyses' as const,
   results: null,
   fixes: null,
   selectedCallId: null,
+  currentAnalysisId: null,
+  currentAnalysisName: null,
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -88,6 +93,28 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
+  updateCheckName: (checkId: CheckType, name: string) => {
+    const { checks } = get();
+    set({
+      checks: checks.map((check) =>
+        check.id === checkId ? { ...check, name } : check
+      ),
+    });
+  },
+
+  addCustomCheck: (check: CheckConfig) => {
+    const { checks } = get();
+    set({ checks: [...checks, { ...check, custom: true }] });
+  },
+
+  deleteCustomCheck: (checkId: CheckType) => {
+    const { checks } = get();
+    const check = checks.find(c => c.id === checkId);
+    if (check && check.custom) {
+      set({ checks: checks.filter(c => c.id !== checkId) });
+    }
+  },
+
   resetCheckInstructions: (checkId: CheckType) => {
     const { checks } = get();
     set({
@@ -133,6 +160,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({ runProgress: progress });
 
         try {
+          console.log(`Starting analysis of transcript ${transcript.id} (${i + 1}/${totalTranscripts})`);
           const issues = await analyzeTranscript(
             apiKey,
             openaiConfig.model,
@@ -141,14 +169,22 @@ export const useAppStore = create<AppState>((set, get) => ({
             referenceEnabled ? referenceScript : null,
             knowledgeBaseEnabled ? knowledgeBase : null
           );
+          console.log(`Completed analysis of transcript ${transcript.id}, found ${issues.length} issues`);
           allIssues.push(...issues);
         } catch (error) {
           console.error(`Error analyzing transcript ${transcript.id}:`, error);
+          alert(`Error analyzing transcript ${transcript.id}: ${error instanceof Error ? error.message : String(error)}`);
           // Continue with other transcripts
         }
       }
 
       set({ runProgress: 95 });
+
+      console.log(`Analysis complete. Total issues found: ${allIssues.length}`);
+      console.log('Issues by call:', allIssues.reduce((acc, issue) => {
+        acc[issue.callId] = (acc[issue.callId] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>));
 
       // Calculate analytics
       const totalCalls = transcripts.length;
@@ -237,4 +273,111 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelectedCallId: (id: string | null) => set({ selectedCallId: id }),
 
   goToStep: (step) => set({ currentStep: step }),
+
+  // Analysis management
+  getAnalysisState: () => {
+    const state = get();
+    return {
+      transcripts: state.transcripts,
+      referenceScript: state.referenceScript,
+      referenceEnabled: state.referenceEnabled,
+      knowledgeBase: state.knowledgeBase,
+      knowledgeBaseEnabled: state.knowledgeBaseEnabled,
+      checks: state.checks,
+      openaiConfig: state.openaiConfig,
+      results: state.results,
+      fixes: state.fixes,
+      selectedCallId: state.selectedCallId,
+    };
+  },
+
+  restoreAnalysisState: (analysisState) => {
+    set({
+      transcripts: analysisState.transcripts,
+      referenceScript: analysisState.referenceScript,
+      referenceEnabled: analysisState.referenceEnabled,
+      knowledgeBase: analysisState.knowledgeBase,
+      knowledgeBaseEnabled: analysisState.knowledgeBaseEnabled,
+      checks: analysisState.checks,
+      openaiConfig: analysisState.openaiConfig,
+      results: analysisState.results,
+      fixes: analysisState.fixes,
+      selectedCallId: analysisState.selectedCallId,
+      // Determine which step to show based on available data
+      currentStep: analysisState.fixes
+        ? 'fixes'
+        : analysisState.results
+        ? 'results'
+        : 'input',
+    });
+  },
+
+  createNewAnalysis: (name: string) => {
+    // Reset to initial state but keep the name
+    set({
+      ...initialState,
+      currentAnalysisId: `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      currentAnalysisName: name,
+      currentStep: 'input',
+    });
+  },
+
+  saveAnalysis: async (name: string) => {
+    const state = get();
+    const analysisState = get().getAnalysisState();
+
+    // Generate ID if not exists
+    let analysisId = state.currentAnalysisId;
+    if (!analysisId) {
+      analysisId = `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      set({ currentAnalysisId: analysisId });
+    }
+
+    try {
+      const response = await fetch('/api/analyses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: analysisId,
+          storageKey: STORAGE_KEY,
+          name,
+          state: analysisState,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save analysis');
+      }
+
+      set({ currentAnalysisName: name });
+      console.log('Analysis saved successfully:', name);
+    } catch (error) {
+      console.error('Error saving analysis:', error);
+      throw error;
+    }
+  },
+
+  loadAnalysis: async (id: string) => {
+    try {
+      const response = await fetch(`/api/analyses?storageKey=${STORAGE_KEY}&id=${id}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to load analysis');
+      }
+
+      const data = await response.json();
+      const analysisState = data.state;
+
+      set({
+        currentAnalysisId: id,
+        currentAnalysisName: data.name,
+      });
+
+      get().restoreAnalysisState(analysisState);
+      console.log('Analysis loaded successfully:', data.name);
+    } catch (error) {
+      console.error('Error loading analysis:', error);
+      throw error;
+    }
+  },
 }));

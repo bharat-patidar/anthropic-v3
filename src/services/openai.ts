@@ -43,6 +43,13 @@ export async function analyzeTranscript(
   const enabledChecks = checks.filter((c) => c.enabled);
 
   if (enabledChecks.length === 0) {
+    console.log('No enabled checks, skipping analysis');
+    return [];
+  }
+
+  // Validate transcript has lines
+  if (!transcript.lines || transcript.lines.length === 0) {
+    console.warn('Transcript has no lines:', transcript.id);
     return [];
   }
 
@@ -51,10 +58,22 @@ export async function analyzeTranscript(
     .map((line, idx) => `[${idx + 1}] ${line.speaker.toUpperCase()}: ${line.text}`)
     .join('\n');
 
-  // Build checks description
+  console.log(`Analyzing transcript ${transcript.id} with ${transcript.lines.length} lines`);
+
+  // Build checks description with their IDs
   const checksDescription = enabledChecks
-    .map((check) => `- ${check.name}: ${check.instructions}`)
+    .map((check) => `- ${check.name} (ID: ${check.id}): ${check.instructions}`)
     .join('\n');
+
+  // Build valid issue types list (predefined + custom check IDs)
+  const validIssueTypes = [
+    'flow_deviation',
+    'repetition_loop',
+    'language_mismatch',
+    'mid_call_restart',
+    'quality_issue',
+    ...enabledChecks.filter(c => c.custom).map(c => c.id)
+  ];
 
   const systemPrompt = `You are an expert AI voice bot quality analyst. Your task is to analyze call transcripts and detect issues based on specific checks.
 
@@ -65,7 +84,9 @@ ${referenceScript ? `Reference Script/Flow:\n${referenceScript}\n` : ''}
 ${knowledgeBase ? `Knowledge Base:\n${knowledgeBase}\n` : ''}
 
 For each issue found, provide a JSON object with:
-- type: one of [flow_deviation, repetition_loop, language_mismatch, mid_call_restart, quality_issue]
+- type: Use the check ID for the issue type. Valid types are: [${validIssueTypes.join(', ')}]
+  * For standard checks, use: flow_deviation (for flow_compliance check), repetition_loop (for repetition check), language_mismatch (for language_alignment check), mid_call_restart (for restart_reset check), or quality_issue (for general_quality check)
+  * For custom checks, use the exact check ID provided above
 - severity: one of [low, medium, high, critical]
 - confidence: number between 0-100
 - evidenceSnippet: the exact text from the transcript that demonstrates the issue
@@ -82,14 +103,51 @@ Return ONLY a JSON array of issues. If no issues are found, return an empty arra
       { role: 'user', content: userPrompt },
     ]);
 
-    // Parse JSON response
-    const jsonMatch = response.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      console.error('No JSON array found in response:', response);
+    // Try to extract JSON array
+    let jsonStr = response.trim();
+
+    // If wrapped in markdown code blocks, remove them
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
+
+    // Find the first [ and last ]
+    const startIdx = jsonStr.indexOf('[');
+    const endIdx = jsonStr.lastIndexOf(']');
+
+    if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
+      console.error('No valid JSON array found in response:', response);
       return [];
     }
 
-    const issues = JSON.parse(jsonMatch[0]);
+    jsonStr = jsonStr.substring(startIdx, endIdx + 1);
+
+    let issues;
+    try {
+      issues = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Attempted to parse:', jsonStr);
+
+      // Try one more time with cleanup
+      try {
+        const cleaned = jsonStr
+          .replace(/,(\s*[}\]])/g, '$1')
+          .replace(/\n/g, ' ')
+          .replace(/\r/g, '');
+        issues = JSON.parse(cleaned);
+      } catch (secondError) {
+        console.error('Failed to parse issues after cleanup:', secondError);
+        return [];
+      }
+    }
+
+    if (!Array.isArray(issues)) {
+      console.error('Parsed result is not an array:', issues);
+      return [];
+    }
+
+    console.log(`Found ${issues.length} issues in transcript ${transcript.id}`);
 
     // Convert to DetectedIssue format with IDs
     return issues.map((issue: {
@@ -114,6 +172,118 @@ Return ONLY a JSON array of issues. If no issues are found, return an empty arra
   } catch (error) {
     console.error('Error analyzing transcript:', error);
     throw error;
+  }
+}
+
+export async function determineFixPlacements(
+  apiKey: string,
+  model: string,
+  script: string,
+  fixes: Fix[]
+): Promise<{ fixId: string; lineNumber: number; reasoning: string }[]> {
+  if (fixes.length === 0) {
+    return [];
+  }
+
+  const scriptLines = script.split('\n');
+  const numberedScript = scriptLines.map((line, idx) => `${idx + 1}: ${line}`).join('\n');
+
+  const fixesSummary = fixes
+    .map((fix, idx) =>
+      `Fix ${idx + 1} (ID: ${fix.id}):\n` +
+      `Problem: ${fix.problem}\n` +
+      `Suggestion: ${fix.suggestion}\n` +
+      `Placement Hint: ${fix.placementHint}`
+    )
+    .join('\n\n---\n\n');
+
+  const systemPrompt = `You are an expert at analyzing scripts and determining optimal placement for improvements.
+
+Given a script with line numbers and a list of fixes, determine the BEST line number where each fix should be inserted.
+
+Consider:
+- The semantic meaning and context of each line
+- The fix's placement hint (e.g., "after greeting", "before verification")
+- The natural flow of the conversation
+- Logical grouping of related content
+
+Return ONLY a JSON array with this structure:
+[
+  {
+    "fixId": "the fix ID",
+    "lineNumber": the line number (1-indexed) where this fix should be inserted AFTER,
+    "reasoning": "brief explanation of why this is the best placement"
+  }
+]
+
+IMPORTANT:
+- Return ONLY valid JSON, no markdown, no extra text
+- lineNumber should be where to insert AFTER (e.g., lineNumber: 5 means insert after line 5)
+- If a fix should go at the very beginning, use lineNumber: 0
+- If a fix should go at the very end, use lineNumber: ${scriptLines.length}`;
+
+  const userPrompt = `Script with line numbers:\n\n${numberedScript}\n\n---\n\nFixes to place:\n\n${fixesSummary}\n\nDetermine the optimal line number for each fix.`;
+
+  try {
+    const response = await callOpenAI(apiKey, model, [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ]);
+
+    let jsonStr = response.trim();
+
+    // Remove markdown code blocks if present
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
+
+    // Find the first [ and last ]
+    const startIdx = jsonStr.indexOf('[');
+    const endIdx = jsonStr.lastIndexOf(']');
+
+    if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
+      console.error('No valid JSON array found in placement response:', response);
+      // Fallback: place all at end
+      return fixes.map(fix => ({
+        fixId: fix.id,
+        lineNumber: scriptLines.length,
+        reasoning: 'Fallback: placed at end'
+      }));
+    }
+
+    jsonStr = jsonStr.substring(startIdx, endIdx + 1);
+
+    let placements;
+    try {
+      placements = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error('JSON parse error for placements:', parseError);
+      // Fallback: place all at end
+      return fixes.map(fix => ({
+        fixId: fix.id,
+        lineNumber: scriptLines.length,
+        reasoning: 'Fallback: placed at end due to parse error'
+      }));
+    }
+
+    if (!Array.isArray(placements)) {
+      console.error('Placements result is not an array:', placements);
+      return fixes.map(fix => ({
+        fixId: fix.id,
+        lineNumber: scriptLines.length,
+        reasoning: 'Fallback: placed at end'
+      }));
+    }
+
+    return placements;
+  } catch (error) {
+    console.error('Error determining fix placements:', error);
+    // Fallback: place all at end
+    return fixes.map(fix => ({
+      fixId: fix.id,
+      lineNumber: script.split('\n').length,
+      reasoning: 'Fallback: placed at end due to error'
+    }));
   }
 }
 
@@ -149,14 +319,16 @@ CRITICAL CONSTRAINTS:
 For each fix, provide a JSON object with:
 - issueType: type of issue this addresses (flow_deviation, repetition_loop, language_mismatch, mid_call_restart, quality_issue)
 - problem: brief description of the problem identified
-- suggestion: SPECIFIC prompt text that can be added to the bot's system prompt
-- placementHint: where to add this in the reference script or knowledge base (e.g., "Add to greeting section", "Add to troubleshooting guidelines", "Add to knowledge base")
-- exampleResponse: example of how bot should respond after adding this prompt
+- suggestion: SPECIFIC prompt text that can be added to the bot's system prompt (avoid using quotes or special characters)
+- placementHint: where to add this in the reference script or knowledge base
+- exampleResponse: example of how bot should respond after adding this prompt (avoid using quotes or special characters)
 - relatedIssueIds: array of issue IDs this addresses
 
 Categorize fixes:
 - scriptFixes: Prompt additions/modifications for reference script (flow-related)
 - generalFixes: Prompt additions for system instructions (behavior-related)
+
+IMPORTANT: Return ONLY valid JSON without any markdown, comments, or extra text. Use single quotes inside string values if needed. Ensure all strings are properly escaped.
 
 Return JSON: {"scriptFixes": [...], "generalFixes": [...]}`;
 
@@ -179,39 +351,94 @@ Return JSON: {"scriptFixes": [...], "generalFixes": [...]}`;
       { role: 'user', content: userPrompt },
     ]);
 
-    // Parse JSON response
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('No JSON object found in response:', response);
+    // Try to extract JSON - look for the outermost braces
+    let jsonStr = response.trim();
+
+    // If wrapped in markdown code blocks, remove them
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
+
+    // Find the first { and last }
+    const startIdx = jsonStr.indexOf('{');
+    const endIdx = jsonStr.lastIndexOf('}');
+
+    if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
+      console.error('No valid JSON object found in response:', response);
       return { scriptFixes: [], generalFixes: [] };
     }
 
-    const fixesData = JSON.parse(jsonMatch[0]);
+    jsonStr = jsonStr.substring(startIdx, endIdx + 1);
 
-    // Add IDs to fixes
-    const scriptFixes = (fixesData.scriptFixes || []).map((fix: {
-      issueType: string;
-      problem: string;
-      suggestion: string;
-      placementHint: string;
-      exampleResponse: string;
-      relatedIssueIds: string[];
-    }, idx: number) => ({
-      ...fix,
-      id: `script-fix-${idx}`,
-    }));
+    let fixesData;
+    try {
+      fixesData = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Attempted to parse:', jsonStr.substring(0, 500)); // Log first 500 chars
 
-    const generalFixes = (fixesData.generalFixes || []).map((fix: {
-      issueType: string;
-      problem: string;
-      suggestion: string;
-      placementHint: string;
-      exampleResponse: string;
-      relatedIssueIds: string[];
-    }, idx: number) => ({
-      ...fix,
-      id: `general-fix-${idx}`,
-    }));
+      // Try multiple cleanup strategies
+      try {
+        // Strategy 1: Fix common issues
+        let cleaned = jsonStr
+          .replace(/,(\s*[}\]])/g, '$1')  // Remove trailing commas
+          .replace(/\n/g, ' ')             // Remove newlines
+          .replace(/\r/g, '')              // Remove carriage returns
+          .replace(/\t/g, ' ');            // Replace tabs with spaces
+
+        fixesData = JSON.parse(cleaned);
+      } catch (secondError) {
+        try {
+          // Strategy 2: More aggressive - fix escaped quotes
+          let cleaned = jsonStr
+            .replace(/\\'/g, "'")           // Fix escaped single quotes
+            .replace(/,(\s*[}\]])/g, '$1')  // Remove trailing commas
+            .replace(/[\n\r\t]/g, ' ')      // Remove all whitespace chars
+            .replace(/\s+/g, ' ');          // Collapse multiple spaces
+
+          fixesData = JSON.parse(cleaned);
+        } catch (thirdError) {
+          // Last resort: try to extract just the arrays
+          console.error('All parsing strategies failed');
+          console.error('Original error:', parseError);
+          console.error('Second error:', secondError);
+          console.error('Third error:', thirdError);
+
+          throw new Error(`Failed to parse fix suggestions. The AI response was not in valid JSON format. Please try again.`);
+        }
+      }
+    }
+
+    // Validate structure
+    if (!fixesData || typeof fixesData !== 'object') {
+      console.error('Parsed data is not an object:', fixesData);
+      return { scriptFixes: [], generalFixes: [] };
+    }
+
+    // Add IDs to fixes with validation
+    const scriptFixes = Array.isArray(fixesData.scriptFixes)
+      ? fixesData.scriptFixes.map((fix: any, idx: number) => ({
+          id: `script-fix-${idx}`,
+          issueType: fix.issueType || 'quality_issue',
+          problem: fix.problem || 'Issue detected',
+          suggestion: fix.suggestion || '',
+          placementHint: fix.placementHint || 'Add to system prompt',
+          exampleResponse: fix.exampleResponse || '',
+          relatedIssueIds: Array.isArray(fix.relatedIssueIds) ? fix.relatedIssueIds : [],
+        }))
+      : [];
+
+    const generalFixes = Array.isArray(fixesData.generalFixes)
+      ? fixesData.generalFixes.map((fix: any, idx: number) => ({
+          id: `general-fix-${idx}`,
+          issueType: fix.issueType || 'quality_issue',
+          problem: fix.problem || 'Issue detected',
+          suggestion: fix.suggestion || '',
+          placementHint: fix.placementHint || 'Add to system prompt',
+          exampleResponse: fix.exampleResponse || '',
+          relatedIssueIds: Array.isArray(fix.relatedIssueIds) ? fix.relatedIssueIds : [],
+        }))
+      : [];
 
     return { scriptFixes, generalFixes };
   } catch (error) {

@@ -2,4 +2,4 @@
 
 This file is used to trigger Vercel deployments.
 
-Last deployment trigger: 2025-01-15 - Fixed OpenAI Configuration to remove API key input from UI
+Last deployment trigger: 2025-01-16 - Custom checks display fix and comprehensive sample prompts!

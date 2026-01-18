@@ -3,7 +3,8 @@ export type CheckType =
   | 'repetition'
   | 'language_alignment'
   | 'restart_reset'
-  | 'general_quality';
+  | 'general_quality'
+  | string; // Allow custom check IDs
 
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
 
@@ -51,6 +52,8 @@ export interface CheckConfig {
   requiresReference: boolean;
   instructions: string;
   defaultInstructions: string;
+  custom?: boolean; // Mark custom checks
+  icon?: string; // Custom icon for custom checks
 }
 
 export interface AnalysisResult {
@@ -82,6 +85,35 @@ export interface OpenAIConfig {
   model: string;
 }
 
+export interface SavedAnalysis {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  stats?: {
+    totalCalls: number;
+    avgIssuesPerCall: number;
+    totalIssues: number;
+  };
+}
+
+export interface SavedAnalysisWithState extends SavedAnalysis {
+  state: AnalysisState;
+}
+
+export interface AnalysisState {
+  transcripts: Transcript[];
+  referenceScript: string;
+  referenceEnabled: boolean;
+  knowledgeBase: string;
+  knowledgeBaseEnabled: boolean;
+  checks: CheckConfig[];
+  openaiConfig: OpenAIConfig;
+  results: AnalysisResult | null;
+  fixes: FixSuggestions | null;
+  selectedCallId: string | null;
+}
+
 export interface AppState {
   // Input state
   transcripts: Transcript[];
@@ -97,7 +129,11 @@ export interface AppState {
   // Run state
   isRunning: boolean;
   runProgress: number;
-  currentStep: 'input' | 'running' | 'results' | 'fixes';
+  currentStep: 'analyses' | 'input' | 'running' | 'results' | 'fixes';
+
+  // Analysis management
+  currentAnalysisId: string | null;
+  currentAnalysisName: string | null;
 
   // Results state
   results: AnalysisResult | null;
@@ -113,10 +149,20 @@ export interface AppState {
   setOpenAIConfig: (config: Partial<OpenAIConfig>) => void;
   toggleCheck: (checkId: CheckType) => void;
   updateCheckInstructions: (checkId: CheckType, instructions: string) => void;
+  updateCheckName: (checkId: CheckType, name: string) => void;
+  addCustomCheck: (check: CheckConfig) => void;
+  deleteCustomCheck: (checkId: CheckType) => void;
   resetCheckInstructions: (checkId: CheckType) => void;
   resetAllToDefaults: () => void;
   runAnalysis: () => Promise<void>;
   generateFixes: () => void;
   setSelectedCallId: (id: string | null) => void;
-  goToStep: (step: 'input' | 'running' | 'results' | 'fixes') => void;
+  goToStep: (step: 'analyses' | 'input' | 'running' | 'results' | 'fixes') => void;
+
+  // Analysis management
+  saveAnalysis: (name: string) => Promise<void>;
+  loadAnalysis: (id: string) => Promise<void>;
+  createNewAnalysis: (name: string) => void;
+  getAnalysisState: () => AnalysisState;
+  restoreAnalysisState: (state: AnalysisState) => void;
 }
